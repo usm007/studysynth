@@ -102,7 +102,23 @@ def q_cognitive_forms(q):
 
 
 def required_forms(ku):
-    """Exam-value-driven required cognitive forms for a KU. Not mechanical x4."""
+    """Exam-value-driven required cognitive forms for a KU. Not mechanical x4.
+
+    Rules (audited against PRODUCT.md section 9 and prompts/classify.md):
+    - Tier 1 (critical) normally needs recall + statement; plus distinction
+      when confusion risk is medium/high or confusable units exist, because a
+      critical KU must be tested in multiple forms where supported.
+    - Tier 2 (important) needs recall, plus distinction under the same
+      confusion conditions.
+    - Tier 3+ needs recall only.
+    - statement is required only when the source supports statement forms:
+      statement_potential "low" (PRODUCT section 8: do not invent what the
+      source cannot support) exempts it. Recall/distinction remain.
+    - application is required only for concept-like KU types (cause_effect,
+      process, principle, theory, formula, comparison, classification,
+      concept) at tier <= 2 with medium/high conceptual density; it is never
+      forced for every unit.
+    """
     tier = ku.get("tier", 3)
     try:
         tier = int(tier)
@@ -125,10 +141,10 @@ def required_forms(ku):
         req = {"recall"}
     else:
         req = {"recall"}
-    if stmt_pot == "low" and "statement" in req and tier >= 2:
+    if stmt_pot == "low":
         # source does not support statement forms; do not force them
-        if tier == 2:
-            pass  # keep recall-only default already
+        # (tiers whose requirements lack statement are unaffected)
+        req.discard("statement")
     # application only required when KU type supports it
     if ku.get("type") in ("cause_effect", "process", "principle", "theory", "formula",
                           "comparison", "classification", "concept"):
@@ -147,6 +163,9 @@ def main(argv):
     ap.add_argument("--cap", type=int, default=None)
     ap.add_argument("--quality", default=None, help="Path to quality_report.json")
     ap.add_argument("--dedupe", default=None, help="Path to dedupe_report.json")
+    ap.add_argument("--blind", default=None, help="Path to blind-review comparison "
+                    "(scripts/review_batch.py output): questions whose independently "
+                    "derived answer mismatches the bank key earn no credit")
     a = ap.parse_args(argv)
     for p in (a.bank, a.inventory, a.validation):
         if not os.path.isfile(p):
@@ -175,15 +194,27 @@ def main(argv):
             if isinstance(p, dict) and p.get("type") in ("exact_duplicate", "semantic_duplicate") and p.get("b"):
                 dedupe_excluded.add(p["b"])
 
+    # Load blind-review mismatches if a comparison report is explicitly provided
+    blind_mismatched = set()
+    if a.blind and os.path.isfile(a.blind):
+        brep = load_json(a.blind)
+        bres = brep.get("results") if isinstance(brep, dict) else brep
+        for r in (bres or []):
+            if isinstance(r, dict) and r.get("id") and r.get("match") is False:
+                blind_mismatched.add(r["id"])
+
     # Qualifying questions for coverage MUST be:
     # 1. Validated
     # 2. Quality-accepted (if quality report was explicitly passed)
     # 3. Not excluded by dedupe (if dedupe report was explicitly passed)
+    # 4. Blind-answer agreement (if blind comparison was explicitly passed)
     qualifying_ids = set()
     for qid in valid:
         if qual_accepted is not None and qid not in qual_accepted:
             continue
         if qid in dedupe_excluded:
+            continue
+        if qid in blind_mismatched:
             continue
         qualifying_ids.add(qid)
 
@@ -327,6 +358,7 @@ def main(argv):
         "total_bank_questions": len(qs),
         "quality_filtered": qual_accepted is not None,
         "dedupe_filtered": len(dedupe_excluded) > 0,
+        "blind_filtered": len(blind_mismatched) > 0,
         "cognitive_per_ku": cognitive_per_ku,
         "cognitive_by_tier": cognitive_by_tier,
         "purpose_coverage": dict(purpose_counter),

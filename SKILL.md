@@ -47,6 +47,89 @@ for PDF, pypdf for PDF ingest/check, openpyxl for XLSX, pymupdf optional).
 
 `scripts/pipeline.py --source --run-id --profile --config [--inventory --bank --ignored --diff]`
 runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
+`--redo STAGE` invalidates that stage + descendants via fingerprints; `--redo all` forces recompute.
+
+## Execution phases (same product, fewer serial calls)
+
+### Phase A — Source understanding
+- Parse + deterministic anchors (`ingest.py`, `anchors.py`), then group blocks
+  into section-aware chunks (~4000-6000 input tokens,
+  `batching.extraction_chunk_tokens`; tables intact, deterministic chunk_id).
+- `prompts/extract.md` takes `blocks[]` per chunk; run chunks concurrently
+  (max 3). Merge in chunk order; dedupe overlaps ONLY by stable source identity
+  (block_id + normalized excerpt), never fuzzy-merge distinct facts.
+- `prompts/second-pass.md` is mandatory and independent (not a summary of pass
+  1): batched chunks + pass-1 KUs, re-scans tables/lists/footnotes/dates/names,
+  runs concurrently, reconciles with anchor/density checks before blueprinting.
+- Classify per section (`prompts/classify.md`), then GLOBAL reconciliation
+  (`prompts/exam-design.md`) for cross-section clusters, cognitive forms,
+  purposes, type mix. Never finalize per-section blueprints alone.
+- `locate_excerpts.py` + `inventory_check.py` verify every excerpt/region.
+
+### Phase B — Exam design and generation
+- Blueprint only after the inventory is reconciled.
+- Generate ~6-8 rows/call (`prompts/generate.md` -> `{"questions": [...]}`),
+  grouped by section, concurrency 3, STABLE IDs per blueprint row. Statement
+  fields are inlined in the same call (no second statement-engine call).
+- Merge in input order; reject duplicate IDs; retry ONLY the failed batch.
+
+### Phase C — Independent verification + deterministic controls
+- TWO separate batched streams (`prompts/review-batch.md` protocol):
+  blind-answer review (`review-blind-batch.md`, PHYSICALLY redacted payload —
+  no answer/answer_key, is_correct, truth fields, covers, prior decisions)
+  and semantic quality review (`review-semantic-batch.md`, full item).
+  Run both streams concurrently (3 each); never merge into one self-review.
+- `scripts/review_batch.py` compares blind answers vs bank key in code; a
+  mismatch excludes the question from coverage (`coverage.py --blind`) until
+  repaired and re-reviewed.
+- Deterministic `validate_questions.py` + 11-dimension `quality.py` +
+  `dedupe.py` run concurrently on the frozen bank; coverage waits for all
+  eligibility reports. Persist both review streams; never re-review unchanged
+  questions; re-review every new/modified one.
+
+### Phase D — Targeted gap closure and delivery
+- Gap-fill is event-driven (`prompts/gap-fill.md`): one compact manifest/round
+  (uncovered T1/T2, missing forms/purposes/clusters, failed IDs, accepted
+  status); batched candidates; validate/review ONLY new/changed items;
+  recompute audit+gate; stop on COMPREHENSIVE, on no progress, or at max
+  5 rounds. No full-bank LLM audit pass: `audit.py`/`gate.py` are authoritative
+  and the model never overrides them.
+- Repair locally: `repair_queue.json` carries exact reasons + excerpts + KU
+  mappings; max `max_repair_retries: 2`; excluded items stay as coverage gaps.
+  Unrecoverable stage failures still abort.
+- After the package is immutable, build HTML + requested PDFs concurrently
+  (separate outputs, errors propagate); never build PDFs when not requested.
+
+## Agent operating rules
+- Work independent chunks/batches concurrently where supported; keep a batch
+  ledger (`batch_progress.json`: completed vs pending per stream) and persist
+  successful work before starting the next stage, so interruption resumes
+  pending batches instead of restarting.
+- Reuse only dependency-valid results (`artifact_manifest.json` fingerprints);
+  `--redo STAGE` invalidates that stage + descendants.
+- Use deterministic code for deterministic decisions; quote script output for
+  every pass/fail claim; never bypass a failed gate or claim COMPREHENSIVE
+  without `gate.py` evidence.
+
+## Deterministic performance rules
+
+- Content-addressed cache (`artifact_manifest.json`): reuse only when input hashes
+  + config/profile hashes + script version + prompt version + model id all match.
+  Changing source/profile/prompt/question/config/schema/code invalidates descendants.
+- Coverage MUST be computed with `--quality quality_report.json --dedupe dedupe_report.json`
+  (plus `--blind blind_review.json` when the blind-review comparison exists)
+  for new-engine banks (explicit purposes present):
+  only validated + quality-accepted + non-duplicate + blind-agreeing questions
+  earn credit
+  (primary full, secondary partial, distractor_basis zero). Legacy banks without
+  purpose tags are grandfathered to validation-only credit (mirroring `gate.py`);
+  their quality/dedupe reports are still built and audited.
+- Safe parallelism only: validate/quality/dedupe run concurrently after inputs freeze
+  (coverage waits for all three); web + pdf run concurrently after the package is
+  immutable. Never build PDFs when not requested.
+- Metrics (`run_metrics.json`): stage durations, counts, chunks/batches, cache
+  hits/misses, rejected/repaired/accepted/excluded, gap rounds, html/pdf times.
+  Model-call counts marked unavailable when the orchestrator cannot observe them.
 
 ## Field contracts (must match schemas/*.json)
 

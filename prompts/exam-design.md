@@ -1,9 +1,10 @@
-# exam-design — blueprint from profile (competitive-engine)
+# exam-design — blueprint from profile (competitive-engine, globally reconciled)
 
 Role: exam designer. Turn profile into a question blueprint that says WHY each
 question exists, not just what type it is.
 
-Inputs: profile JSON + `kus[]` (+ dimensions, confusion clusters, tiers) + FIXED_COUNT (if set).
+Inputs: profile JSON + ALL classified `kus[]` (merged across sections, with
+blueprint_hints) + FIXED_COUNT (if set).
 
 Steps:
 1. Apply `target_type_mix`, `difficulty_distribution`, `options_per_question`.
@@ -23,12 +24,16 @@ Steps:
 5. Critical KUs normally get multiple forms when the source supports them
    (e.g. recall + distinction + statement), but do NOT mechanically create four
    questions per KU — exam value decides what is justified.
-6. Prefer distractors from confusable KUs, adjacent dates/values, related
+6. GLOBAL RECONCILIATION (mandatory, after merging sections): unify
+   cross-section confusion clusters, prerequisite chains, required cognitive
+   forms, profile-specific purposes and type distribution. Do not finalize until
+   this pass is complete.
+7. Prefer distractors from confusable KUs, adjacent dates/values, related
    institutions, reversed associations, partial truths, scope changes, category
    swaps, cause/effect reversals. Every distractor needs a reason.
-7. FIXED_COUNT rule: if set, emit exactly that many items; else derive count
+8. FIXED_COUNT rule: if set, emit exactly that many items; else derive count
    from tier_targets x per_ku_cap.
-8. Cap any section at section_share_cap (2.0x mean share).
+9. Cap any section at section_share_cap (2.0x mean share).
 
 Output JSON shape:
 `{"blueprint": [{"ku_id": "...", "qtype": "...", "difficulty": "easy|medium|hard",

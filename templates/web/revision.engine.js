@@ -174,6 +174,8 @@ var RevisionEngine = (function () {
     } else {
       req = { recall: 1 };
     }
+    // Source does not support statement forms: do not force them.
+    if (stmtPot === "low") delete req.statement;
     var trig = { cause_effect: 1, process: 1, principle: 1, theory: 1, formula: 1,
                  comparison: 1, classification: 1, concept: 1 };
     if (trig[ku && ku.type] && tier <= 2 &&

@@ -223,14 +223,25 @@ def evaluate_source_support(q, ku_ids, ku_map, block_ids, ntext, mode):
         stem_txt = q.get("stem", "")
         corr_txt = " ".join((o.get("text") or "") for o in (q.get("options") or []) if o.get("is_correct") is True)
         tested_claim = stem_txt + " " + corr_txt
+        # False statements carry deliberate alterations (e.g. date_shift): a
+        # year/statistic occurring inside a declared false-statement alteration
+        # is the tested falsehood, not an unsupported asserted fact. Exempt it
+        # here; statement_quality separately requires the alteration record.
+        altered_texts = [norm(s.get("text", "")) for s in q.get("statements") or []
+                         if isinstance(s, dict) and truth_of(s) is False
+                         and (s.get("alteration") or s.get("alteration_type"))]
         # 4-digit years
         for yr in re.findall(r"\b(?:1[789]\d\d|20\d\d)\b", tested_claim):
             if yr not in ntext:
+                if any(yr in t for t in altered_texts):
+                    continue
                 status = "FAIL"
                 notes.append("unsupported date '%s' absent from source document" % yr)
                 break
         # Percentages
         for pct in re.findall(r"\b\d+(?:\.\d+)?\s*%", tested_claim):
+            if any(norm(pct) in t for t in altered_texts):
+                continue
             p_clean = re.sub(r"\s+", "", pct)
             num_part = re.search(r"\b\d+(?:\.\d+)?", pct).group(0)
             in_source = (
