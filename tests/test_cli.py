@@ -30,6 +30,7 @@ class TestPipelineCLI(unittest.TestCase):
                     "--config", "config.default.json", "--build-dir", tmp,
                     "--inventory", str(ROOT / "examples/sample_inventory.json"),
                     "--bank", str(ROOT / "examples/sample_bank.json"),
+                    "--processing-mode", "COMPREHENSIVE",
                     "--ignored", str(ROOT / "tests/fixtures/e2e_ignored_anchors.json"),
                     "--diff", str(ROOT / "tests/fixtures/e2e_inventory_diff.json"))
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -37,6 +38,35 @@ class TestPipelineCLI(unittest.TestCase):
             self.assertEqual(gate["status"], "COMPREHENSIVE", gate)
             audit = json.loads(Path(tmp, "t1", "audit_report.json").read_text(encoding="utf-8"))
             self.assertEqual(audit["coverage_by_tier"]["1"]["pct_covered"], 100.0)
+
+    def test_default_balanced_mode_yields_limited_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            r = run("scripts/pipeline.py", "--source", "examples/sample_source.md",
+                    "--run-id", "t_bal", "--profile", "profiles/GENERAL_PSC.json",
+                    "--config", "config.default.json", "--build-dir", tmp,
+                    "--inventory", str(ROOT / "examples/sample_inventory.json"),
+                    "--bank", str(ROOT / "examples/sample_bank.json"),
+                    "--ignored", str(ROOT / "tests/fixtures/e2e_ignored_anchors.json"),
+                    "--diff", str(ROOT / "tests/fixtures/e2e_inventory_diff.json"))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            gate = json.loads(Path(tmp, "t_bal", "gate.json").read_text(encoding="utf-8"))
+            self.assertEqual(gate["status"], "LIMITED", gate)
+            self.assertTrue(any("BALANCED" in r for r in gate.get("reasons", [])))
+
+    def test_quick_mode_yields_limited_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            r = run("scripts/pipeline.py", "--source", "examples/sample_source.md",
+                    "--run-id", "t_quick", "--profile", "profiles/GENERAL_PSC.json",
+                    "--config", "config.default.json", "--build-dir", tmp,
+                    "--inventory", str(ROOT / "examples/sample_inventory.json"),
+                    "--bank", str(ROOT / "examples/sample_bank.json"),
+                    "--processing-mode", "QUICK",
+                    "--ignored", str(ROOT / "tests/fixtures/e2e_ignored_anchors.json"),
+                    "--diff", str(ROOT / "tests/fixtures/e2e_inventory_diff.json"))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            gate = json.loads(Path(tmp, "t_quick", "gate.json").read_text(encoding="utf-8"))
+            self.assertEqual(gate["status"], "LIMITED", gate)
+            self.assertTrue(any("QUICK" in r for r in gate.get("reasons", [])))
 
     def test_pipeline_resume_skips_done_stages(self):
         with tempfile.TemporaryDirectory() as tmp:

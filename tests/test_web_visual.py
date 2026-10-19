@@ -85,11 +85,16 @@ class TestModes(unittest.TestCase):
                   "Rapid Recall", "High-density", "rapidReveal"]:
             self.assertNotIn(s, t, s)
 
-    def test_confidence_meter_present(self):
+    def test_sidebar_confidence_surface_present(self):
+        # The rail confidence meter was superseded by the session overview
+        # (accuracy + completion), which carries the same "how am I doing"
+        # signal in the sidebar.
         t = tpl_text()
-        for eid in ["confMeter", "cmPct", "cmFill", "cmSub"]:
+        for eid in ["studyDashboard", "statAccuracy", "statAccuracyNote",
+                    "statCompletion", "statProgressBar", "statProgressFill"]:
             self.assertIn('id="%s"' % eid, t, eid)
-        self.assertIn("renderConfMeter", t)
+        self.assertIn('role="progressbar"', t)
+        self.assertIn("renderDashboardStats", t)
 
     def test_active_mode_unmistakable(self):
         t = tpl_text()

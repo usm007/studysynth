@@ -9,7 +9,7 @@ Independent verification stays TWO distinct responsibilities, each batched:
    answer; answer correctness is owned by stream 1 + deterministic `stmt_check`.
 
 The two streams are independent batch requests; run them concurrently (bounded
-concurrency 3 each). Never merge them into a single self-review: the blind
+concurrency 4 each). Never merge them into a single self-review: the blind
 stream must not receive key material, and neither stream certifies its own key.
 
 Redaction (before the blind payload is built, physically remove):

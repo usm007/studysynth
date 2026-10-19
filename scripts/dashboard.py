@@ -22,242 +22,241 @@ DASHBOARD_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" href="data:,">
 <title>StudySynth Library — Master Dashboard</title>
 <style>
+/* StudySynth "Warm Study Desk" library tokens: same system as the study module
+   (templates/web/app.template.html). Light paper surfaces, forest accent #315D49.
+   Offline: system stacks only, no webfonts, no network requests. */
 :root {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --surface-hover: #28364e;
-  --border: #334155;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --accent: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.25);
-  --badge-bg: #1e3a8a;
-  --badge-text: #93c5fd;
-  --success-bg: #064e3b;
-  --success-text: #6ee7b7;
-  --radius: 12px;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bg: #f3f0e6;
+  --surface: #fffefa;
+  --surface-2: #f6f4eb;
+  --surface-3: #ebe8dd;
+  --ink: #1f2620;
+  --ink-2: #414a44;
+  --muted: #5f6860;
+  --line: #d8dcd2;
+  --line-soft: #e7e9df;
+  --line-strong: #a2a9a0;
+  --accent: #315d49;
+  --accent-2: #244b3a;
+  --accent-soft: #dce9df;
+  --good: #205f35;
+  --good-bg: #e9f3e7;
+  --good-line: #bfd9c4;
+  --warn: #8a5b00;
+  --warn-bg: #fbf1d9;
+  --warn-line: #e8d5a4;
+  --bad: #a63028;
+  --bad-bg: #faecea;
+  --bad-line: #ebc3bd;
+  --focus: #244b3a;
+  --radius: 16px;
+  --radius-s: 10px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", "Helvetica Neue", Arial, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(31, 38, 32, .06);
+  --shadow: 0 1px 3px rgba(31, 38, 32, .08), 0 4px 10px rgba(31, 38, 32, .05);
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
 body {
-  font-family: var(--font);
-  background-color: var(--bg);
-  color: var(--text-main);
-  line-height: 1.5;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  font-size: 15px;
   min-height: 100vh;
-  padding: 2.5rem 1.5rem;
+  min-height: 100dvh;
+  padding: calc(2rem + env(safe-area-inset-top)) 1.5rem calc(2.5rem + env(safe-area-inset-bottom));
 }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+::selection { background: var(--accent-soft); }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
+.container { max-width: 1160px; margin: 0 auto; }
 
+/* header: brand + live count */
 header {
-  margin-bottom: 2.5rem;
-  padding-bottom: 1.75rem;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--line);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-}
-
-.brand-section {
-  display: flex;
-  align-items: center;
   gap: 1rem;
 }
-
+.brand-section { display: flex; align-items: center; gap: .9rem; min-width: 0; }
 .brand-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: var(--radius-s);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 1.25rem;
-  color: #ffffff;
-  box-shadow: 0 4px 12px var(--accent-glow);
-}
-
-.brand-info h1 {
-  font-size: 1.75rem;
   font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--text-main);
+  font-size: 1.05rem;
+  letter-spacing: .5px;
+  flex: none;
 }
-
-.brand-info p {
-  color: var(--text-muted);
-  font-size: 0.925rem;
+.brand-info h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--accent-2);
+  line-height: 1.25;
 }
-
-.stats-bar {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
+.brand-info p { color: var(--muted); font-size: .875rem; }
+.stats-bar { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
 .stat-pill {
   background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 0.45rem 1rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: .35rem .9rem;
+  font-size: .8rem;
+  color: var(--muted);
   display: flex;
-  gap: 0.5rem;
+  gap: .45rem;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
 }
+.stat-pill strong { color: var(--ink); font-weight: 700; }
 
-.stat-pill strong {
-  color: var(--text-main);
+/* search */
+.search-section { margin-bottom: 1.5rem; max-width: 460px; }
+.search-wrap { position: relative; }
+.search-wrap .sw-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
 }
-
-.search-section {
-  margin-bottom: 2rem;
-}
-
 .search-input {
   width: 100%;
   max-width: 480px;
-  padding: 0.75rem 1.15rem;
+  padding: .68rem 1rem .68rem 2.4rem;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text-main);
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  color: var(--ink);
+  font: inherit;
+  font-size: .95rem;
+  min-height: 44px;
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
-
+.search-input::placeholder { color: var(--muted); }
 .search-input:focus {
-  outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-/* CSS Grid layout for study module library cards */
+/* library grid: responsive cards, one per module */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.1rem;
 }
-
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 1.5rem;
+  padding: 1.25rem 1.35rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  gap: 1rem;
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease);
 }
-
 .card:hover {
-  transform: translateY(-3px);
-  border-color: #475569;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  background: var(--surface-hover);
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow);
 }
-
-.card-top {
-  margin-bottom: 1.25rem;
-}
-
-.card-badges {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.85rem;
-}
-
+.card-top { margin-bottom: 0; }
+.card-badges { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: .7rem; }
 .badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.6rem;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: .22rem .55rem;
   border-radius: 6px;
-  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-
-.badge-module {
-  background: var(--badge-bg);
-  color: var(--badge-text);
-}
-
-.badge-status {
-  background: var(--success-bg);
-  color: var(--success-text);
-}
-
+.badge-module { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.badge-status { background: var(--good-bg); color: var(--good); border: 1px solid var(--good-line); }
 .card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
   line-height: 1.4;
-  margin-bottom: 0.5rem;
-  color: var(--text-main);
+  margin-bottom: .45rem;
+  color: var(--ink);
+  overflow-wrap: break-word;
 }
-
 .card-meta {
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  font-size: .835rem;
+  color: var(--muted);
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: .3rem;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: break-word;
 }
-
 .card-footer {
-  padding-top: 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: .9rem;
+  border-top: 1px solid var(--line-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
 }
-
 .btn-launch {
   background: var(--accent);
   color: #ffffff;
   text-decoration: none;
-  font-weight: 600;
-  font-size: 0.875rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  font-weight: 700;
+  font-size: .875rem;
+  padding: .5rem 1rem;
+  border-radius: var(--radius-s);
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  transition: background 0.2s ease, transform 0.1s ease;
+  gap: .4rem;
+  transition: background .15s var(--ease);
 }
-
-.btn-launch:hover {
-  background: #2563eb;
-  transform: scale(1.02);
-}
-
-.date-text {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
+.btn-launch:hover { background: var(--accent-2); }
+.btn-launch:focus-visible { outline-offset: 2px; }
+.btn-launch .ic { width: 1rem; height: 1rem; fill: currentColor; flex: none; }
+.date-text { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .empty-state {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 4rem 1.5rem;
+  padding: 3.5rem 1.5rem;
   background: var(--surface);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--line-strong);
   border-radius: var(--radius);
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 @media (max-width: 640px) {
-  body { padding: 1.5rem 1rem; }
+  body { padding: 1.25rem 1rem 2rem; }
   .grid { grid-template-columns: 1fr; }
+  .brand-info h1 { font-size: 1.3rem; }
+  .btn-launch { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
 }
 </style>
 </head>
@@ -265,10 +264,10 @@ header {
 <div class="container">
   <header>
     <div class="brand-section">
-      <div class="brand-icon">SS</div>
+      <div class="brand-icon" aria-hidden="true">SS</div>
       <div class="brand-info">
         <h1>StudySynth Library</h1>
-        <p>Interactive Study Modules & Revision Engine</p>
+        <p>Interactive Study Modules &amp; Revision Engine</p>
       </div>
     </div>
     <div class="stats-bar">
@@ -284,7 +283,11 @@ header {
   </header>
 
   <div class="search-section">
-    <input type="text" id="searchInput" class="search-input" placeholder="Search study modules..." onkeyup="filterCards()">
+    <div class="search-wrap">
+      <svg class="sw-icon" viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M13.5 13.5 17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <label class="skip-label" for="searchInput" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search study modules</label>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search study modules…" onkeyup="filterCards()">
+    </div>
   </div>
 
   <main class="grid" id="moduleGrid">
@@ -310,6 +313,20 @@ function filterCards() {
 </body>
 </html>
 """
+
+
+def _update_module_count(content: str, count: int) -> str:
+    """Rewrite the header module counter regardless of its element tag."""
+    new_value = f'<strong id="moduleCount">{count}</strong>'
+    updated, n = re.subn(
+        r'<(?:span|strong) id="moduleCount">\d*</(?:span|strong)>',
+        new_value,
+        content,
+    )
+    if not n:
+        # counter missing (older/hand-edited dashboard): keep content usable
+        raise SystemExit("ERROR: dashboard template lost the module count marker")
+    return updated
 
 
 def _load_registry_data(html_content: str) -> list[dict]:
@@ -370,7 +387,7 @@ def _render_cards(modules: list[dict]) -> str:
         </div>
         <div class="card-footer">
           <span class="date-text">{updated}</span>
-          <a href="{rel_path}" class="btn-launch">Launch Module →</a>
+          <a href="{rel_path}" class="btn-launch">Launch Module <svg class="ic" aria-hidden="true" viewBox="0 -960 960 960"><path d="M647-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h447L451-716q-12-12-11.5-28t12.5-28q12-11 28-11.5t28 11.5l264 264q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L508-188q-11 11-27.5 11T452-188q-12-12-12-28.5t12-28.5l195-195Z"/></svg></a>
         </div>
       </article>"""
             cards.append(card)
@@ -389,11 +406,7 @@ def generate_dashboard_html(modules: list[dict]) -> str:
     s_idx = content.find(REGISTRY_START) + len(REGISTRY_START)
     e_idx = content.find(REGISTRY_END)
     updated_content = content[:s_idx] + rendered_block + content[e_idx:]
-    updated_content = re.sub(
-        r'<span id="moduleCount">\d*</span>',
-        f'<span id="moduleCount">{len(modules)}</span>',
-        updated_content,
-    )
+    updated_content = _update_module_count(updated_content, len(modules))
     return updated_content
 
 
@@ -465,11 +478,7 @@ def update_dashboard(
     updated_content = content[:s_idx] + rendered_block + content[e_idx:]
 
     # Update module count in header
-    updated_content = re.sub(
-        r'<span id="moduleCount">\d*</span>',
-        f'<span id="moduleCount">{len(modules)}</span>',
-        updated_content,
-    )
+    updated_content = _update_module_count(updated_content, len(modules))
 
     dash_p.write_text(updated_content, encoding="utf-8")
     return dash_p

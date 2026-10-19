@@ -12,11 +12,14 @@ def load_json(path):
 
 
 def save_json(path, obj):
+    path = str(path)
     d = os.path.dirname(os.path.abspath(path))
     if d:
         os.makedirs(d, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    tmp_path = path + ".tmp.%d" % os.getpid()
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, path)
 
 
 def ensure_dir(path):

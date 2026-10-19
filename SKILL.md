@@ -45,22 +45,54 @@ for PDF, pypdf for PDF ingest/check, openpyxl for XLSX, pymupdf optional).
 | 16 | `prompts/revision.md` | `scripts/package.py --inventory ...` | `quiz_package.json` (validated only, tiers stamped) |
 | 17 | — | `scripts/build_web.py`, `scripts/build_pdf.py`, `scripts/check_pdf.py` | `quiz.html`, `pdf/*.pdf`, `check_report.json` |
 
-`scripts/pipeline.py --source --run-id --profile --config [--inventory --bank --ignored --diff]`
+`scripts/pipeline.py --source --run-id --profile --config [--processing-mode MODE --inventory --bank --ignored --diff]`
 runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
-`--redo STAGE` invalidates that stage + descendants via fingerprints; `--redo all` forces recompute.
+`--processing-mode` accepts `QUICK`, `BALANCED` (default), or `COMPREHENSIVE`.
+Stage-specific dependency fingerprints avoid unnecessary stage invalidation on downstream changes.
+`--redo STAGE` invalidates that stage + descendants; `--redo all` forces recompute.
+
+## Processing modes (`--processing-mode`)
+
+Select mode consistently:
+- **`QUICK`**: Use when the user requests a quick practice set, a small batch, a sample, or a fast first pass.
+  - Primary extraction workflow runs over selected source.
+  - Skips the exhaustive second-pass sweep across every source chunk.
+  - Targeted source checks for answer-critical facts, uncertain evidence, uncovered anchors, and critical tables/dates/numbers.
+  - Retains both blind and semantic review streams and all 11 deterministic quality gates.
+  - Default maximum gap-fill rounds: **1**.
+  - Re-reviews only new or modified questions.
+  - Result status is `LIMITED`; never marked `COMPREHENSIVE`.
+- **`BALANCED`** (Default in `config.default.json`): Use for ordinary chapter-to-quiz, notes-to-quiz, and study-material generation.
+  - Full primary source extraction over the complete source.
+  - Reconciles inventory, classifies units, and prioritizes Tier 1 and Tier 2 units for generation.
+  - Skips redundant exhaustive second-pass sweep over every chunk; runs targeted secondary checks for anchor gaps, answer-critical claims, and structured tables.
+  - Retains both independent review streams and all deterministic quality gates.
+  - Default maximum gap-fill rounds: **2**.
+  - Re-reviews only new or modified questions.
+  - Result status is `LIMITED` with explicit reduced verification scope; never marked `COMPREHENSIVE`.
+- **`COMPREHENSIVE`**: Use when the user explicitly requests an exhaustive question bank, comprehensive coverage, or complete source verification.
+  - Full primary extraction AND independent exhaustive second-pass recall sweep across every source chunk (tables, lists, captions, footnotes, numbers, dates).
+  - Global classification and reconciliation, both independent review streams, all 11 quality checks, deduplication.
+  - Default maximum gap-fill rounds: **5**.
+  - Comprehensive tier targets (T1/T2 100%) and cognitive requirements enforced.
+  - Result status may be `COMPREHENSIVE` only when substantiated by passing audit and gate evidence.
+
+Mode selection rules:
+- Explicit exhaustive/full-coverage request → `COMPREHENSIVE`
+- Explicit quick/sample/small practice request → `QUICK`
+- All ordinary chapter and notes conversions → `BALANCED`
+- `processing_mode` is independent from `fidelity_mode` (`SOURCE_BOUND` / `ENHANCED`) and `scope_mode` (`COMPREHENSIVE` / `FIXED_COUNT`).
 
 ## Execution phases (same product, fewer serial calls)
 
 ### Phase A — Source understanding
 - Parse + deterministic anchors (`ingest.py`, `anchors.py`), then group blocks
-  into section-aware chunks (~4000-6000 input tokens,
-  `batching.extraction_chunk_tokens`; tables intact, deterministic chunk_id).
+  into section-aware chunks (~5000 input tokens, `batching.extraction_chunk_tokens`; tables intact, deterministic chunk_id).
 - `prompts/extract.md` takes `blocks[]` per chunk; run chunks concurrently
-  (max 3). Merge in chunk order; dedupe overlaps ONLY by stable source identity
+  (bounded concurrency 3). Merge in chunk order; dedupe overlaps ONLY by stable source identity
   (block_id + normalized excerpt), never fuzzy-merge distinct facts.
-- `prompts/second-pass.md` is mandatory and independent (not a summary of pass
-  1): batched chunks + pass-1 KUs, re-scans tables/lists/footnotes/dates/names,
-  runs concurrently, reconciles with anchor/density checks before blueprinting.
+- In `COMPREHENSIVE` mode, `prompts/second-pass.md` runs an exhaustive independent sweep across all chunks.
+  In `QUICK` and `BALANCED` modes, targeted secondary checks focus on anchor gaps, uncertain claims, and structured tables.
 - Classify per section (`prompts/classify.md`), then GLOBAL reconciliation
   (`prompts/exam-design.md`) for cross-section clusters, cognitive forms,
   purposes, type mix. Never finalize per-section blueprints alone.
@@ -68,8 +100,8 @@ runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
 
 ### Phase B — Exam design and generation
 - Blueprint only after the inventory is reconciled.
-- Generate ~6-8 rows/call (`prompts/generate.md` -> `{"questions": [...]}`),
-  grouped by section, concurrency 3, STABLE IDs per blueprint row. Statement
+- Generate up to 8 questions/call (`prompts/generate.md` -> `{"questions": [...]}`),
+  grouped by section, bounded concurrency 4 (`batching.question_concurrency`), STABLE IDs per blueprint row. Statement
   fields are inlined in the same call (no second statement-engine call).
 - Merge in input order; reject duplicate IDs; retry ONLY the failed batch.
 
@@ -77,8 +109,8 @@ runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
 - TWO separate batched streams (`prompts/review-batch.md` protocol):
   blind-answer review (`review-blind-batch.md`, PHYSICALLY redacted payload —
   no answer/answer_key, is_correct, truth fields, covers, prior decisions)
-  and semantic quality review (`review-semantic-batch.md`, full item).
-  Run both streams concurrently (3 each); never merge into one self-review.
+  and semantic quality review (`review-semantic-batch.md`, full item), up to 6 questions/call (`batching.review_batch_size`).
+  Run both streams concurrently (bounded concurrency 4 each); never merge into one self-review.
 - `scripts/review_batch.py` compares blind answers vs bank key in code; a
   mismatch excludes the question from coverage (`coverage.py --blind`) until
   repaired and re-reviewed.
@@ -91,8 +123,8 @@ runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
 - Gap-fill is event-driven (`prompts/gap-fill.md`): one compact manifest/round
   (uncovered T1/T2, missing forms/purposes/clusters, failed IDs, accepted
   status); batched candidates; validate/review ONLY new/changed items;
-  recompute audit+gate; stop on COMPREHENSIVE, on no progress, or at max
-  5 rounds. No full-bank LLM audit pass: `audit.py`/`gate.py` are authoritative
+  recompute audit+gate; stop on COMPREHENSIVE (in COMPREHENSIVE mode), on no progress, or at mode-specific max rounds
+  (1 for QUICK, 2 for BALANCED, 5 for COMPREHENSIVE). No full-bank LLM audit pass: `audit.py`/`gate.py` are authoritative
   and the model never overrides them.
 - Repair locally: `repair_queue.json` carries exact reasons + excerpts + KU
   mappings; max `max_repair_retries: 2`; excluded items stay as coverage gaps.
@@ -101,13 +133,15 @@ runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
   (separate outputs, errors propagate); never build PDFs when not requested.
 
 ## Agent operating rules
-- Work independent chunks/batches concurrently where supported; keep a batch
-  ledger (`batch_progress.json`: completed vs pending per stream) and persist
-  successful work before starting the next stage, so interruption resumes
-  pending batches instead of restarting.
-- Reuse only dependency-valid results (`artifact_manifest.json` fingerprints);
+- Work independent chunks/batches concurrently where supported; keep a content-addressed batch
+  ledger (`batch_progress.json`: completed vs pending per stream with payload/schema/config fingerprints)
+  and persist successful work atomically before starting the next stage, so interruption resumes
+  pending or invalidated batches instead of restarting.
+- Reuse only dependency-valid results (`artifact_manifest.json` stage-specific fingerprints);
   `--redo STAGE` invalidates that stage + descendants.
 - Use deterministic code for deterministic decisions; quote script output for
+  every pass/fail claim; never bypass a failed gate or claim COMPREHENSIVE
+  without `gate.py` evidence.
   every pass/fail claim; never bypass a failed gate or claim COMPREHENSIVE
   without `gate.py` evidence.
 

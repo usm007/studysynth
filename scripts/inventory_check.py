@@ -5,6 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib_common import load_json, save_json, norm, toks, fail, run_main
+from anchors import build_anchor_index, check_anchor_hit
 
 SPEC_REASONS = {"boilerplate", "bibliography", "page_furniture", "decorative"}
 LEGACY_REASONS = {"out_of_scope", "duplicate", "unverifiable", "non_examinable",
@@ -41,9 +42,7 @@ def diff_status_of(path):
 
 
 def compute(inv_units, struct, anchors, ignored, threshold):
-    ku_text = {}
-    for u in inv_units:
-        ku_text[u.get("id")] = norm("%s %s" % (u.get("statement", ""), u.get("supporting_excerpt", "")))
+    joined_ku, ku_text = build_anchor_index(inv_units)
     ign = {}
     for e in ignored:
         if isinstance(e, dict):
@@ -55,7 +54,7 @@ def compute(inv_units, struct, anchors, ignored, threshold):
     for an in anchors:
         aid = an.get("id", "")
         v = norm(an.get("value", ""))
-        hit = any(v and v in t for t in ku_text.values())
+        hit = check_anchor_hit(v, joined_ku)
         if not hit:
             r = ign.get(aid, ign.get(v, ""))
             if reason_ok(r):

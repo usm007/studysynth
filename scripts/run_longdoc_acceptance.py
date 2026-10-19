@@ -133,7 +133,8 @@ def main(argv):
                   "--bank", R_("question_bank_round1.json"),
                   "--out", R_("audit_round1.json")]) == 0
     assert timed("gate-r1", sh, "gate",
-                 [R_("audit_round1.json"), "--config", cfg, "--out", R_("gate_round1.json")]) == 0
+                 [R_("audit_round1.json"), "--config", cfg, "--out", R_("gate_round1.json"),
+                  "--processing-mode", "COMPREHENSIVE"]) == 0
     g1 = load_json(R_("gate_round1.json"))
     assert g1["status"] == "PARTIAL", g1
     print("round1 gate (expected PARTIAL): %s" % g1["reasons"])
@@ -178,7 +179,8 @@ def main(argv):
                   "--bank", R_("question_bank.json"),
                   "--out", R_("audit_report.json")]) == 0
     assert timed("gate", sh, "gate",
-                 [R_("audit_report.json"), "--config", cfg, "--out", R_("gate.json")]) == 0
+                 [R_("audit_report.json"), "--config", cfg, "--out", R_("gate.json"),
+                  "--processing-mode", "COMPREHENSIVE"]) == 0
     g = load_json(R_("gate.json"))
     print("final gate: %s %s" % (g["status"], g["reasons"]))
     assert g["status"] == "COMPREHENSIVE", g

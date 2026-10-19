@@ -6,6 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib_common import load_json, save_json, norm, toks, fail, run_main
+from anchors import build_anchor_index, check_anchor_hit
 
 
 def main(argv):
@@ -42,13 +43,13 @@ def main(argv):
     uncovered = [k for k, e in per_ku.items() if e.get("status") == "uncovered"]
     partial = [k for k, e in per_ku.items() if e.get("status") == "partially_covered"]
     uncov_t1t2 = [k for k in uncovered if tier_of.get(k) in ("1", "2")]
-    kut = {u.get("id"): norm("%s %s" % (u.get("statement", ""), u.get("supporting_excerpt", ""))) for u in units}
+    joined_ku, kut = build_anchor_index(units)
     ign = set()
     if a.ignored and os.path.isfile(a.ignored):
         o = load_json(a.ignored)
         items = o if isinstance(o, list) else o.get("anchors", o.get("items", []))
         ign = {x.get("anchor_id", norm(x.get("value", ""))) for x in items if isinstance(x, dict)}
-    hit = sum(1 for an in anchors if any(norm(an.get("value", "")) and norm(an.get("value", "")) in t for t in kut.values()) or an.get("id") in ign)
+    hit = sum(1 for an in anchors if an.get("id") in ign or check_anchor_hit(norm(an.get("value", "")), joined_ku))
     recall = hit / len(anchors) if anchors else 1.0
     dstatus = "resolved"
     for cand in ([a.diff] if a.diff else []) + [os.path.join(os.path.dirname(os.path.abspath(a.inventory)), "inventory_diff.json")]:

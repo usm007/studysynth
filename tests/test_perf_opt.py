@@ -71,7 +71,8 @@ class TestBatchConfig(unittest.TestCase):
         cfg = json.loads((ROOT / "config.default.json").read_text(encoding="utf-8"))
         b = cfg["batching"]
         self.assertEqual(b["extraction_concurrency"], 3)
-        self.assertEqual(b["question_concurrency"], 3)
+        self.assertEqual(b["question_concurrency"], 4)
+        self.assertEqual(b["review_concurrency"], 4)
         self.assertTrue(4000 <= b["extraction_chunk_tokens"] <= 6000)
         self.assertTrue(6 <= b["question_batch_size"] <= 8)
         self.assertTrue(4 <= b["review_batch_size"] <= 6)
@@ -264,6 +265,7 @@ class TestCoverageEligibility(unittest.TestCase):
                             "--config", "config.default.json", "--build-dir", str(tmp),
                             "--inventory", "examples/sample_inventory.json",
                             "--bank", "examples/sample_bank.json",
+                            "--processing-mode", "COMPREHENSIVE",
                             "--ignored", str(ROOT / "tests/fixtures/e2e_ignored_anchors.json"),
                             "--diff", str(ROOT / "tests/fixtures/e2e_inventory_diff.json")],
                            capture_output=True, text=True, cwd=str(ROOT), timeout=300)

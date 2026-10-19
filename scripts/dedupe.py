@@ -16,7 +16,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib_common import load_json, save_json, norm, token_set_sim, fail, run_main
+from lib_common import load_json, save_json, norm, toks, token_set_sim, fail, run_main
 
 
 def blob(q):
@@ -45,15 +45,53 @@ def get_prim_ku(q):
     return None
 
 
+def jaccard_sim(sa, sb) -> float:
+    """Exact Jaccard token-set similarity on precomputed token sets."""
+    if not sa and not sb:
+        return 1.0
+    if not sa or not sb:
+        return 0.0
+    return len(sa & sb) / len(sa | sb)
+
+
+def prepare_question_repr(q):
+    """Precompute normalized text, token sets, and metadata for fast duplicate comparison."""
+    stem_raw = q.get("stem", q.get("question", "")) or ""
+    stem_n = norm(stem_raw)
+    bl = blob(q)
+    sts = []
+    for st in (q.get("statements") or []):
+        if isinstance(st, dict):
+            t = st.get("text", "") or ""
+            sts.append((norm(t), set(toks(t))))
+    return {
+        "id": q.get("id"),
+        "stem_raw": stem_raw,
+        "norm_stem": stem_n,
+        "norm_stem_sig": stem_n,
+        "stem_toks": set(toks(stem_raw)),
+        "blob": bl,
+        "blob_norm": norm(bl),
+        "blob_toks": set(toks(bl)),
+        "prim_ku": get_prim_ku(q),
+        "purpose": q.get("purpose"),
+        "statements": sts,
+        "raw": q
+    }
+
+
 def detect_duplicates(questions, threshold=0.85):
     pairs = []
     diversity_preserved = []
 
-    for x, y in itertools.combinations(questions, 2):
-        x_id, y_id = x.get("id"), y.get("id")
-        x_stem, y_stem = norm(x.get("stem", "")), norm(y.get("stem", ""))
-        x_prim, y_prim = get_prim_ku(x), get_prim_ku(y)
-        x_purp, y_purp = x.get("purpose"), y.get("purpose")
+    # Precompute reusable normalized and tokenized representations
+    reprs = [prepare_question_repr(q) for q in (questions or [])]
+
+    for x, y in itertools.combinations(reprs, 2):
+        x_id, y_id = x["id"], y["id"]
+        x_stem, y_stem = x["norm_stem"], y["norm_stem"]
+        x_prim, y_prim = x["prim_ku"], y["prim_ku"]
+        x_purp, y_purp = x["purpose"], y["purpose"]
 
         # 1. Exact Duplicate
         if x_stem and x_stem == y_stem:
@@ -64,7 +102,7 @@ def detect_duplicates(questions, threshold=0.85):
             continue
 
         # 2. Semantic Duplicate via Blob Similarity
-        s = token_set_sim(blob(x), blob(y))
+        s = jaccard_sim(x["blob_toks"], y["blob_toks"])
         if s >= threshold:
             pairs.append({
                 "a": x_id, "b": y_id, "type": "semantic_duplicate",
@@ -73,10 +111,10 @@ def detect_duplicates(questions, threshold=0.85):
             continue
 
         # 3. Same Statement Set with Cosmetic Changes
-        sts_x = [norm(st.get("text", "")) for st in (x.get("statements") or []) if isinstance(st, dict)]
-        sts_y = [norm(st.get("text", "")) for st in (y.get("statements") or []) if isinstance(st, dict)]
+        sts_x = x["statements"]
+        sts_y = y["statements"]
         if sts_x and sts_y and len(sts_x) == len(sts_y):
-            matches = sum(1 for sx in sts_x if any(token_set_sim(sx, sy) >= 0.85 for sy in sts_y))
+            matches = sum(1 for sx in sts_x if any(jaccard_sim(sx[1], sy[1]) >= 0.85 for sy in sts_y))
             if matches == len(sts_x):
                 pairs.append({
                     "a": x_id, "b": y_id, "type": "same_statement_set",
@@ -87,7 +125,7 @@ def detect_duplicates(questions, threshold=0.85):
         # 4. Same Fact + Same Purpose Redundancy vs Valuable Diversity
         if x_prim and y_prim and x_prim == y_prim:
             if x_purp and y_purp and x_purp == y_purp:
-                stem_sim = token_set_sim(x.get("stem", ""), y.get("stem", ""))
+                stem_sim = jaccard_sim(x["stem_toks"], y["stem_toks"])
                 if stem_sim >= 0.65 or s >= 0.70:
                     pairs.append({
                         "a": x_id, "b": y_id, "type": "same_fact_same_purpose",
@@ -103,6 +141,7 @@ def detect_duplicates(questions, threshold=0.85):
                 })
 
     return pairs, diversity_preserved
+
 
 
 def main(argv):

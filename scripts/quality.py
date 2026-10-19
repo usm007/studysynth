@@ -259,67 +259,127 @@ def evaluate_source_support(q, ku_ids, ku_map, block_ids, ntext, mode):
     return {"status": status, "notes": notes}
 
 
-def evaluate_uniqueness(q, seen_bank, threshold=0.85):
-    notes = []
-    status = "PASS"
+def jaccard_sim(sa, sb) -> float:
+    """Exact Jaccard token-set similarity on precomputed token sets."""
+    if not sa and not sb:
+        return 1.0
+    if not sa or not sb:
+        return 0.0
+    return len(sa & sb) / len(sa | sb)
+
+
+def prepare_uniqueness_repr(q):
+    """Precompute normalized text, token sets, and metadata for fast uniqueness evaluation."""
     qid = q.get("id")
     stem = q.get("stem", "")
     purp = q.get("purpose")
     prim = extract_primary_ku(q)
     opts = [(o.get("text") or "") for o in (q.get("options") or [])]
-    blob = norm(stem + " " + " ".join(opts))
+    blob_str = norm(stem + " " + " ".join(opts))
+    sts = []
+    for s in (q.get("statements") or []):
+        if isinstance(s, dict):
+            t = s.get("text", "") or ""
+            sts.append((norm(t), set(toks(t))))
+    return {
+        "id": qid,
+        "stem": stem,
+        "norm_stem": norm(stem),
+        "stem_toks": set(toks(stem)),
+        "purp": purp,
+        "prim": prim,
+        "blob": blob_str,
+        "blob_toks": set(toks(blob_str)),
+        "statements": sts,
+        "raw": q
+    }
+
+
+def evaluate_uniqueness(q, seen_bank, threshold=0.85, repr_cache=None):
+    notes = []
+    status = "PASS"
+    
+    # Resolve precomputed representation for q
+    if isinstance(q, dict) and "_uniqueness_repr" in q:
+        xq = q["_uniqueness_repr"]
+    elif repr_cache is not None and id(q) in repr_cache:
+        xq = repr_cache[id(q)]
+    else:
+        xq = prepare_uniqueness_repr(q)
+
+    qid = xq["id"]
+    stem = xq["stem"]
+    norm_stem = xq["norm_stem"]
+    purp = xq["purp"]
+    prim = xq["prim"]
+    stem_toks = xq["stem_toks"]
+    blob_toks = xq["blob_toks"]
+    sts1 = xq["statements"]
 
     fail_notes = []
     warn_notes = []
 
     for oq in seen_bank:
-        if oq.get("id") == qid:
+        if isinstance(oq, dict) and "_uniqueness_repr" in oq:
+            yq = oq["_uniqueness_repr"]
+        elif repr_cache is not None and id(oq) in repr_cache:
+            yq = repr_cache[id(oq)]
+        elif isinstance(oq, dict) and "norm_stem" in oq and "blob_toks" in oq:
+            yq = oq
+        else:
+            yq = prepare_uniqueness_repr(oq)
+            if repr_cache is not None:
+                repr_cache[id(oq)] = yq
+
+        if yq["id"] == qid:
             continue
-        ostem = oq.get("stem", "")
-        oprim = extract_primary_ku(oq)
-        opurp = oq.get("purpose")
-        oopts = [(o.get("text") or "") for o in (oq.get("options") or [])]
-        oblob = norm(ostem + " " + " ".join(oopts))
+
+        ostem = yq["stem"]
+        norm_ostem = yq["norm_stem"]
+        oprim = yq["prim"]
+        opurp = yq["purp"]
+        ostem_toks = yq["stem_toks"]
+        oblob_toks = yq["blob_toks"]
+        sts2 = yq["statements"]
 
         # 1. Exact duplicate
-        if norm(stem) and norm(stem) == norm(ostem):
+        if norm_stem and norm_stem == norm_ostem:
             status = "FAIL"
-            fail_notes.append("exact stem duplicate with %s" % oq.get("id"))
+            fail_notes.append("exact stem duplicate with %s" % yq["id"])
             break
 
         # 2. Semantic duplicate
-        sim = token_set_sim(blob, oblob)
+        sim = jaccard_sim(blob_toks, oblob_toks)
         if sim >= threshold:
             status = "FAIL"
-            fail_notes.append("semantic duplicate of %s (similarity %.2f)" % (oq.get("id"), sim))
+            fail_notes.append("semantic duplicate of %s (similarity %.2f)" % (yq["id"], sim))
             break
 
         # 3. Same fact + Same purpose redundancy
         if prim and oprim and prim == oprim and purp and opurp and purp == opurp:
-            stem_sim = token_set_sim(stem, ostem)
+            stem_sim = jaccard_sim(stem_toks, ostem_toks)
             if stem_sim >= 0.65:
                 status = "FAIL"
                 fail_notes.append("redundant: same primary KU %s and same purpose '%s' as %s (stem sim %.2f)" %
-                                  (prim, purp, oq.get("id"), stem_sim))
+                                  (prim, purp, yq["id"], stem_sim))
                 break
             else:
                 warn_notes.append("potential redundancy: same KU %s and purpose '%s' as %s" %
-                                 (prim, purp, oq.get("id")))
+                                  (prim, purp, yq["id"]))
 
         # 4. Statement permutation redundancy
-        sts1 = [norm(s.get("text", "")) for s in (q.get("statements") or []) if isinstance(s, dict)]
-        sts2 = [norm(s.get("text", "")) for s in (oq.get("statements") or []) if isinstance(s, dict)]
         if sts1 and sts2 and len(sts1) == len(sts2):
-            matches = sum(1 for s in sts1 if any(token_set_sim(s, s2) >= 0.85 for s2 in sts2))
+            matches = sum(1 for s in sts1 if any(jaccard_sim(s[1], s2[1]) >= 0.85 for s2 in sts2))
             if matches == len(sts1):
                 status = "FAIL"
-                fail_notes.append("statement set duplicate of %s" % oq.get("id"))
+                fail_notes.append("statement set duplicate of %s" % yq["id"])
                 break
 
     if status != "FAIL" and warn_notes:
         status = "WARNING"
 
     return {"status": status, "notes": fail_notes + warn_notes}
+
 
 
 def evaluate_distractor_quality(q):
@@ -694,14 +754,14 @@ def evaluate_explanation_quality(q):
     return {"status": status, "notes": notes}
 
 
-def evaluate_question(q, ku_ids, ku_map, block_ids, ntext, mode, seen_bank):
+def evaluate_question(q, ku_ids, ku_map, block_ids, ntext, mode, seen_bank, repr_cache=None):
     """Run full 11-dimension quality evaluation on a single question."""
     qid = q.get("id", "?")
     checks = {}
 
     checks["accuracy"] = evaluate_accuracy(q, ntext, ku_map)
     checks["source_support"] = evaluate_source_support(q, ku_ids, ku_map, block_ids, ntext, mode)
-    checks["uniqueness"] = evaluate_uniqueness(q, seen_bank)
+    checks["uniqueness"] = evaluate_uniqueness(q, seen_bank, repr_cache=repr_cache)
     checks["distractor_quality"] = evaluate_distractor_quality(q)
     checks["exam_value"] = evaluate_exam_value(q)
     checks["difficulty_fit"] = evaluate_difficulty_fit(q)
@@ -757,13 +817,17 @@ def evaluate_bank(bank, inventory, struct, profile=None, mode="SOURCE_BOUND", th
     block_ids = {x.get("id") for x in struct.get("blocks", [])}
     ntext = norm(struct.get("normalized_text", ""))
 
+    # Precompute representations for uniqueness checks once per bank evaluation
+    repr_cache = {id(q): prepare_uniqueness_repr(q) for q in (qs or [])}
+
     seen_bank = []
     results = []
 
     for q in qs:
-        res = evaluate_question(q, ku_ids, ku_map, block_ids, ntext, mode, seen_bank)
+        res = evaluate_question(q, ku_ids, ku_map, block_ids, ntext, mode, seen_bank, repr_cache=repr_cache)
         results.append(res)
         seen_bank.append(q)
+
 
     # Summary statistics
     total = len(results)

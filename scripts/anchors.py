@@ -4,7 +4,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib_common import load_json, save_json, resolve_out, fail, run_main
+from lib_common import load_json, save_json, resolve_out, fail, run_main, norm
 
 MONTHS = "Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?"
 PATS = [
@@ -19,6 +19,33 @@ PATS = [
 ]
 LIST_RE = re.compile(r"^(\d+[.)]|[-*\u2022])\b")
 CAP = 150
+
+
+def build_anchor_index(units):
+    """Build precomputed normalized text index for all knowledge units.
+    Joins normalized statements and excerpts with \x00.
+    Because \x00 does not occur in normalized anchor strings, an anchor value
+    matches inside the joined string if and only if it matches inside at least
+    one knowledge unit's statement or supporting excerpt.
+    Returns (joined_str, ku_text_map).
+    """
+    ku_map = {}
+    texts = []
+    for u in units or []:
+        uid = u.get("id")
+        t = norm("%s %s" % (u.get("statement", ""), u.get("supporting_excerpt", "")))
+        ku_map[uid] = t
+        if t:
+            texts.append(t)
+    joined = "\x00".join(texts)
+    return joined, ku_map
+
+
+def check_anchor_hit(v_norm, joined_index):
+    """Check if a normalized anchor value hits any knowledge unit."""
+    if not v_norm or "\x00" in v_norm:
+        return False
+    return v_norm in joined_index
 
 
 def extract(blocks):

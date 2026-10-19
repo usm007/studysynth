@@ -36,7 +36,7 @@ After each round (orchestrator, deterministic):
 5. STOP immediately if COMPREHENSIVE passes.
 6. If no meaningful progress, stop wasting model calls; report honest
    PARTIAL/LIMITED with unresolved gaps.
-7. Otherwise continue, up to max_gapfill_rounds=5 (config; never reduced).
+7. Otherwise continue, up to mode-specific maximum rounds: 1 (QUICK), 2 (BALANCED, default), or 5 (COMPREHENSIVE) (configurable via max_gapfill_rounds).
 
 Output JSON shape: `{"new_questions": [Question], "rounds_used": n,
 "targeted_gaps": [{"ku_id": "...", "missing_forms": [...], "purpose": "..."}]}`.

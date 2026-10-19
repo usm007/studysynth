@@ -6,7 +6,7 @@ This is a study instrument, not entertainment.
 Inputs: `rows[]` (6-8 blueprint rows: ku_id, qtype, difficulty, purpose,
 cognitive_level) + cited KUs + profile style. Group rows by section or related
 KUs when that improves source context. Batch size is configurable
-(`batching.question_batch_size`, default ~7, subject to token limits).
+(`batching.question_batch_size`, default 8, bounded concurrency up to 4, subject to token limits).
 
 Steps (for EVERY question, full contract retained):
 1. Write stem + exactly `options_per_question` options, one correct.
