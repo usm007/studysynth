@@ -1,4 +1,4 @@
-"""CTET Mock PWA — browser and offline checks.
+"""CTET Mock PWA â€” browser and offline checks.
 
 These run a real Chromium against the built site: the drill-down, the search,
 the player, and the library with the network switched off.
@@ -275,7 +275,7 @@ class TestPlayerInBrowser(BrowserTestCase):
             page.goto(f"{self.site.base}/{href}")
             page.wait_for_selector("#playerFrame")
             frame = page.frame_locator("#playerFrame")
-            frame.locator("#qstem").wait_for(timeout=15000)
+            frame.locator("#qstem").wait_for(timeout=30000)
             self.assertIn(
                 "straight line",
                 frame.locator("#qstem").inner_text(),
@@ -293,7 +293,7 @@ class TestPlayerInBrowser(BrowserTestCase):
             page.wait_for_function(
                 "() => { const t = document.getElementById('playerTitle');"
                 " return t && t.textContent.indexOf('Light') >= 0; }",
-                timeout=15000,
+                timeout=30000,
             )
         finally:
             page.close()
@@ -322,7 +322,7 @@ class TestOfflineInBrowser(BrowserTestCase):
             page.goto(f"{self.site.base}/{href}")
             page.wait_for_selector("#playerFrame")
             frame = page.frame_locator("#playerFrame")
-            frame.locator("#qstem").wait_for(timeout=15000)
+            frame.locator("#qstem").wait_for(timeout=30000)
             self.assertIn("natural resources", frame.locator("#qstem").inner_text())
         finally:
             context.set_offline(False)

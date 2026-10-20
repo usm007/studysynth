@@ -173,10 +173,17 @@ python -m pytest ctet-mock/tests -v
 `test_ui.py` needs Playwright with Chromium installed; it skips itself if
 they are missing.
 
-## 7. Regenerating the icon
+## 7. Regenerating the icon, and previewing the app
 
 ```bash
 python ctet-mock/tools/make_icons.py
 ```
 
 The icon is drawn with the standard library only - no image files to keep.
+
+```bash
+python ctet-mock/tools/screenshot.py
+```
+
+Screenshots the built site on a phone-sized screen into `build/ctet-mock-shots/`,
+so you can see the library without deploying it.
