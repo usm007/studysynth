@@ -370,6 +370,21 @@ class TestStudyPage(unittest.TestCase):
         self.assertIn('body[data-mode="study"] #resetSessionBtn', t)
         self.assertIn('body[data-mode="study"] .workcol', t)
 
+    def test_study_page_reading_spread(self):
+        t = tpl_text()
+        self.assertIn('<div class="sg-shell">', t)
+        self.assertIn('<aside class="sg-map"', t)
+        self.assertIn('aria-label="Chapter contents"', t)
+        self.assertIn('class="sg-map-sec"', t)
+        self.assertIn("function updateStudyMap()", t)
+        self.assertIn("columns: 2", t)
+        self.assertIn("max-height: calc(100vh - 110px)", t)
+        self.assertIn('<h4 class="sg-section-title"', t)
+        self.assertIn("esc(sourceDocHeading())", t)
+        self.assertIn("RAWMETA.source_title", t)
+        self.assertIn('id="studyGuide" tabindex="-1"', t)
+        self.assertIn('setSkipLink("#studyGuide", "Skip to study notes")', t)
+
 
 class TestEditorialIdentity(unittest.TestCase):
     """Study-desk identity: sheet marker, ledger options, study-note states."""
@@ -401,6 +416,138 @@ class TestEditorialIdentity(unittest.TestCase):
     def test_study_plan_numbering(self):
         t = tpl_text()
         self.assertIn("decimal-leading-zero", t)
+
+
+class TestPhoneProgressScroll(unittest.TestCase):
+    """On a phone the Progress page must behave like a normal scrolling page.
+
+    The dashboard is authored as a fixed-height desktop shell, so below the
+    desktop breakpoint it collapses: the page stops scrolling and the cards
+    below the KPI strip are clipped away. The phone needs its own state.
+    """
+
+    PHONE_W, PHONE_H = 390, 844
+
+    @staticmethod
+    def _media_block(text, condition):
+        """Text of every `@media <condition> { ... }` block in the template."""
+        blocks = []
+        needle = "@media " + condition
+        start = 0
+        while True:
+            i = text.find(needle, start)
+            if i == -1:
+                break
+            j = text.find("{", i)
+            depth, k = 0, j
+            while k < len(text):
+                if text[k] == "{":
+                    depth += 1
+                elif text[k] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                k += 1
+            blocks.append(text[j:k])
+            start = k + 1
+        return "\n".join(blocks)
+
+    def test_phone_progress_rule_releases_fixed_height(self):
+        t = tpl_text()
+        block = self._media_block(t, "(max-width: 900px)")
+        self.assertIn("body[data-mode=\"analytics\"] #analyticsview", block)
+        self.assertIn("height: auto", block)
+        self.assertIn("overflow: visible", block)
+        self.assertIn(".an-dashboard-body", block)
+        self.assertIn("grid-template-columns: minmax(0, 1fr)", block)
+
+    def _phone_progress_state(self, html_path):
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest("playwright not installed")
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch()
+                page = browser.new_page(
+                    viewport={"width": self.PHONE_W, "height": self.PHONE_H},
+                    is_mobile=True, has_touch=True)
+                page.goto(html_path.as_uri())
+                page.wait_for_timeout(600)
+                # Answer a handful of questions so the dashboard holds real
+                # content - an empty session is shorter than the viewport and
+                # would hide a clipping bug.
+                for i in range(6):
+                    try:
+                        page.locator("#opts .opt").nth(i % 2).click()
+                        page.evaluate("document.getElementById('submitbtn')?.click()")
+                        page.wait_for_timeout(200)
+                        page.evaluate("document.getElementById('nextbtn')?.click()")
+                        page.wait_for_timeout(200)
+                    except Exception:
+                        break
+                page.evaluate("document.getElementById('bnavAnalytics')?.click()")
+                page.wait_for_timeout(900)
+                state = page.evaluate("""() => {
+                    const view = document.querySelector('#analyticsview');
+                    const body = document.querySelector('.an-dashboard-body');
+                    const nav = document.querySelector('#bottomnav');
+                    const navTop = nav ? nav.getBoundingClientRect().top : innerHeight;
+                    const viewRect = view.getBoundingClientRect();
+                    // the lowest painted piece of analytics content
+                    let lowest = viewRect.top;
+                    for (const el of view.querySelectorAll('*')) {
+                      const cs = getComputedStyle(el);
+                      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+                      const r = el.getBoundingClientRect();
+                      if (r.width === 0 || r.height === 0) continue;
+                      if (r.bottom > lowest) lowest = r.bottom;
+                    }
+                    window.scrollTo(0, document.documentElement.scrollHeight);
+                    const after = lowest - window.scrollY;
+                    return {
+                      vh: innerHeight,
+                      docScrollH: document.documentElement.scrollHeight,
+                      maxScroll: Math.round(document.documentElement.scrollHeight - innerHeight),
+                      viewScrollH: view.scrollHeight,
+                      viewClientH: view.clientHeight,
+                      viewOverflowY: getComputedStyle(view).overflowY,
+                      dashH: body ? body.getBoundingClientRect().height : -1,
+                      dashCols: body ? getComputedStyle(body).gridTemplateColumns : '',
+                      contentBottomAfterScroll: Math.round(after),
+                      navTop: Math.round(navTop),
+                      lowest: Math.round(lowest),
+                    };
+                }""")
+                browser.close()
+                return state
+        except Exception as exc:  # browser missing / driver unavailable
+            self.skipTest("chromium unavailable: %s" % exc)
+
+    def test_progress_page_scrolls_on_phone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp, "quiz.html")
+            r = run("scripts/build_web.py", "examples/hees101_package.json",
+                    "--out", out, "--title", "T")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            state = self._phone_progress_state(out)
+
+        # the page itself must scroll
+        self.assertGreater(state["maxScroll"], 0,
+                           "Progress page does not scroll on a phone")
+        # the dashboard body must have real height, not collapse to zero
+        self.assertGreater(state["dashH"], 40,
+                           "dashboard body collapsed on a phone")
+        # one column on a phone
+        self.assertEqual(len(state["dashCols"].split()), 1,
+                         "dashboard is still multi-column: %s" % state["dashCols"])
+        # the view must not clip its own content
+        self.assertLessEqual(state["viewScrollH"], state["viewClientH"] + 1,
+                             "analytics view clips its content on a phone")
+        # the bottom of the content must be reachable (not trapped under the
+        # fixed bottom nav)
+        self.assertLessEqual(state["contentBottomAfterScroll"], state["navTop"],
+                             "analytics content is trapped behind the bottom nav")
 
 
 if __name__ == "__main__":
