@@ -1,0 +1,1393 @@
+{
+ "questions": [
+  {
+   "id": "Q-0001",
+   "type": "factual_mcq",
+   "stem": "The Constitution of India was adopted on:",
+   "options": [
+    {
+     "key": "A",
+     "text": "26 November 1949",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0001"
+    },
+    {
+     "key": "B",
+     "text": "26 January 1950",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_date",
+     "ku_ref": "KU-0002"
+    },
+    {
+     "key": "C",
+     "text": "15 August 1947",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_date",
+     "ku_ref": null
+    },
+    {
+     "key": "D",
+     "text": "26 November 1950",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_date",
+     "ku_ref": "KU-0001"
+    }
+   ],
+   "answer": "A",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0001",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0002",
+     "role": "distractor_basis"
+    }
+   ],
+   "source": [
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0005",
+     "char_start": 460,
+     "char_end": 517,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0005",
+     "char_start": 522,
+     "char_end": 594,
+     "table_ref": null
+    }
+   ],
+   "explanation": "Adoption (26 November 1949) is distinct from commencement of Fundamental Rights (26 January 1950). Option C borrows Independence Day; D shifts the adoption year.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "easy",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "direct_recall"
+  },
+  {
+   "id": "Q-0002",
+   "type": "factual_mcq",
+   "stem": "The Fundamental Rights in Part III entered into force on:",
+   "options": [
+    {
+     "key": "A",
+     "text": "26 November 1949",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_date",
+     "ku_ref": "KU-0001"
+    },
+    {
+     "key": "B",
+     "text": "26 January 1950",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0002"
+    },
+    {
+     "key": "C",
+     "text": "15 August 1950",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_date",
+     "ku_ref": null
+    },
+    {
+     "key": "D",
+     "text": "26 January 1949",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_date",
+     "ku_ref": "KU-0002"
+    }
+   ],
+   "answer": "B",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0002",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0001",
+     "role": "distractor_basis"
+    }
+   ],
+   "source": [
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0005",
+     "char_start": 522,
+     "char_end": 594,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0005",
+     "char_start": 460,
+     "char_end": 517,
+     "table_ref": null
+    }
+   ],
+   "explanation": "Part III rights became enforceable on 26 January 1950, the date the Constitution commenced — not the adoption date (26 November 1949).",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "easy",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "direct_recall"
+  },
+  {
+   "id": "Q-0003",
+   "type": "statement_based",
+   "stem": "Consider the following statements: 1. Fundamental Rights are contained in Articles 12 to 35 of the Constitution. 2. They are justiciable, so a citizen can move the Supreme Court under Article 32 or a High Court under Article 226 when a right is violated. 3. Fundamental Rights are contained in Part IV of the Constitution. Which of the above is/are correct?",
+   "options": [
+    {
+     "key": "A",
+     "text": "1 and 3 only",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0003",
+     "covers": [
+      1,
+      3
+     ]
+    },
+    {
+     "key": "B",
+     "text": "2 and 3 only",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0004",
+     "covers": [
+      2,
+      3
+     ]
+    },
+    {
+     "key": "C",
+     "text": "1 and 2 only",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0003",
+     "covers": [
+      1,
+      2
+     ]
+    },
+    {
+     "key": "D",
+     "text": "1, 2 and 3",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "overgeneralization",
+     "ku_ref": "KU-0003",
+     "covers": [
+      1,
+      2,
+      3
+     ]
+    }
+   ],
+   "answer": "C",
+   "statements": [
+    {
+     "text": "Fundamental Rights are contained in Articles 12 to 35.",
+     "truth_value": true,
+     "ku_basis": "KU-0003",
+     "alteration": null,
+     "alteration_type": "none"
+    },
+    {
+     "text": "A citizen can move the Supreme Court under Article 32 or a High Court under Article 226 when a right is violated.",
+     "truth_value": true,
+     "ku_basis": "KU-0004",
+     "alteration": null,
+     "alteration_type": "none"
+    },
+    {
+     "text": "Fundamental Rights are contained in Part IV.",
+     "truth_value": false,
+     "ku_basis": "KU-0003",
+     "alteration": "Part III replaced with Part IV",
+     "alteration_type": "value_swap"
+    }
+   ],
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0003",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0004",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0005",
+     "char_start": 596,
+     "char_end": 669,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0005",
+     "char_start": 671,
+     "char_end": 817,
+     "table_ref": null
+    }
+   ],
+   "explanation": "Statements 1 and 2 restate the source: Articles 12-35, enforceable via Article 32/226. Statement 3 swaps Part III for Part IV (Directive Principles), which are non-justiciable.",
+   "memory_aid": null,
+   "hint": "One part of the Constitution holds justiciable rights; another holds directives.",
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "statement_evaluation"
+  },
+  {
+   "id": "Q-0004",
+   "type": "factual_mcq",
+   "stem": "Under Article 12, the term 'State' does NOT include:",
+   "options": [
+    {
+     "key": "A",
+     "text": "The Government and Parliament of India",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0005"
+    },
+    {
+     "key": "B",
+     "text": "All local authorities",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0005"
+    },
+    {
+     "key": "C",
+     "text": "Authorities under the control of the Government of India",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0005"
+    },
+    {
+     "key": "D",
+     "text": "Private individuals running public shops",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0005"
+    }
+   ],
+   "answer": "D",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0004",
+     "role": "secondary"
+    },
+    {
+     "ku_id": "KU-0005",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0042",
+     "role": "distractor_basis"
+    }
+   ],
+   "source": [
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0005",
+     "char_start": 671,
+     "char_end": 817,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0006",
+     "char_start": 832,
+     "char_end": 1087,
+     "table_ref": null
+    },
+    {
+     "page": 3,
+     "section_path": "Key timeline points to memorise:>3. Article 14 and the equality code of Articles 15 and 16",
+     "block_id": "B-0019",
+     "char_start": 6104,
+     "char_end": 6260,
+     "table_ref": null
+    }
+   ],
+   "explanation": "Article 12 covers governments, legislatures, local and other public authorities. Private individuals appear in the notes only under Article 15's public-place clauses, not in the Article 12 definition.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "direct_recall"
+  },
+  {
+   "id": "Q-0005",
+   "type": "statement_based",
+   "stem": "Consider the following statements: 1. Under Article 13, 'law' includes ordinances, orders, bye-laws, rules, regulations, notifications, and customs or usages having the force of law. 2. All laws in force before 26 January 1950 that are inconsistent with Fundamental Rights are void to the extent of the inconsistency. 3. Article 13 protects laws that abridge Fundamental Rights from challenge. Which is/are correct?",
+   "options": [
+    {
+     "key": "A",
+     "text": "1 and 2 only",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0006",
+     "covers": [
+      1,
+      2
+     ]
+    },
+    {
+     "key": "B",
+     "text": "1 only",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0006",
+     "covers": [
+      1
+     ]
+    },
+    {
+     "key": "C",
+     "text": "2 and 3 only",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0007",
+     "covers": [
+      2,
+      3
+     ]
+    },
+    {
+     "key": "D",
+     "text": "1, 2 and 3",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "overgeneralization",
+     "ku_ref": "KU-0007",
+     "covers": [
+      1,
+      2,
+      3
+     ]
+    }
+   ],
+   "answer": "A",
+   "statements": [
+    {
+     "text": "'Law' under Article 13 includes ordinances, orders, bye-laws, rules, regulations, notifications, customs or usages with legal force.",
+     "truth_value": true,
+     "ku_basis": "KU-0006",
+     "alteration": null,
+     "alteration_type": "none"
+    },
+    {
+     "text": "Pre-26 January 1950 laws inconsistent with FRs are void to the extent of inconsistency.",
+     "truth_value": true,
+     "ku_basis": "KU-0007",
+     "alteration": null,
+     "alteration_type": "none"
+    },
+    {
+     "text": "Article 13 protects laws that abridge Fundamental Rights from challenge.",
+     "truth_value": false,
+     "ku_basis": "KU-0008",
+     "alteration": "bar on abridging reversed into protection",
+     "alteration_type": "causality_flip"
+    }
+   ],
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0006",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0007",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0007",
+     "char_start": 1102,
+     "char_end": 1262,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0008",
+     "char_start": 1290,
+     "char_end": 1420,
+     "table_ref": null
+    }
+   ],
+   "explanation": "Statements 1 and 2 are the source definitions. Statement 3 reverses Article 13: it voids inconsistent laws and bars the State from abridging Part III; it protects no abridging law.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "statement_evaluation"
+  },
+  {
+   "id": "Q-0006",
+   "type": "factual_mcq",
+   "stem": "Article 13 bars the State from:",
+   "options": [
+    {
+     "key": "A",
+     "text": "Amending any provision of the Constitution",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "overgeneralization",
+     "ku_ref": "KU-0008"
+    },
+    {
+     "key": "B",
+     "text": "Making any law that takes away or abridges Part III rights",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0008"
+    },
+    {
+     "key": "C",
+     "text": "Enforcing pre-1950 laws consistent with Fundamental Rights",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0007"
+    },
+    {
+     "key": "D",
+     "text": "Seeking judicial review of legislation",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0008"
+    }
+   ],
+   "answer": "B",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0008",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0007",
+     "role": "secondary"
+    }
+   ],
+   "source": [
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0008",
+     "char_start": 1430,
+     "char_end": 1525,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0008",
+     "char_start": 1290,
+     "char_end": 1420,
+     "table_ref": null
+    }
+   ],
+   "explanation": "The bar is specific: no law taking away or abridging Part III rights. It is not a ban on all amendments, nor does it touch consistent pre-1950 laws.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "easy",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "direct_recall"
+  },
+  {
+   "id": "Q-0007",
+   "type": "statement_based",
+   "stem": "Consider the following statements: 1. The First Amendment (1951) added Article 13(4) cover for land-reform laws and inserted Articles 31A and 31B with the Ninth Schedule. 2. The Forty-second Amendment (1976) attempted to shield all Directive Principles from Articles 14 and 19. 3. The Forty-fourth Amendment (1978) deleted the right to property as a Fundamental Right. Which is/are correct?",
+   "options": [
+    {
+     "key": "A",
+     "text": "1 and 2 only",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0009",
+     "covers": [
+      1,
+      2
+     ]
+    },
+    {
+     "key": "B",
+     "text": "2 and 3 only",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0010",
+     "covers": [
+      2,
+      3
+     ]
+    },
+    {
+     "key": "C",
+     "text": "1, 2 and 3",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0011",
+     "covers": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "key": "D",
+     "text": "3 only",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0011",
+     "covers": [
+      3
+     ]
+    }
+   ],
+   "answer": "C",
+   "statements": [
+    {
+     "text": "The First Amendment (1951) added Article 13(4) cover and Articles 31A/31B with the Ninth Schedule.",
+     "truth_value": true,
+     "ku_basis": "KU-0009",
+     "alteration": null,
+     "alteration_type": "none"
+    },
+    {
+     "text": "The 42nd Amendment (1976) tried to shield all Directive Principles from Articles 14 and 19.",
+     "truth_value": true,
+     "ku_basis": "KU-0010",
+     "alteration": null,
+     "alteration_type": "none"
+    },
+    {
+     "text": "The 44th Amendment (1978) deleted the right to property as a Fundamental Right.",
+     "truth_value": true,
+     "ku_basis": "KU-0011",
+     "alteration": null,
+     "alteration_type": "none"
+    }
+   ],
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0009",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0010",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0011",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0008",
+     "char_start": 1527,
+     "char_end": 1675,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0008",
+     "char_start": 1677,
+     "char_end": 1780,
+     "table_ref": null
+    },
+    {
+     "page": 1,
+     "section_path": "How to use these notes>1. Fundamental Rights: Articles 12 to 35, an overview",
+     "block_id": "B-0008",
+     "char_start": 1786,
+     "char_end": 1925,
+     "table_ref": null
+    }
+   ],
+   "explanation": "All three track the source sequence: 1951 land-reform shield (31A/31B, Ninth Schedule), 1976 DPSP shield attempt against Articles 14/19, and the 1978 rollback deleting property from Part III.",
+   "memory_aid": "Amendment ladder: 1951 land, 1976 shield, 1978 rollback.",
+   "hint": null,
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "statement_evaluation"
+  },
+  {
+   "id": "Q-0014",
+   "type": "match_pairs",
+   "stem": "Match List-I (Article) with List-II (subject): 1. Article 12 2. Article 13 3. Article 14; 4. Article 15 5. Article 16. List-II: (a) Equality before law and equal protection (b) No discrimination on listed grounds (c) Equality in public employment (d) Definition of State (e) Laws inconsistent with Fundamental Rights. Correct code 1-2-3-4-5:",
+   "options": [
+    {
+     "key": "A",
+     "text": "e-d-b-a-c",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "adjacent_value",
+     "ku_ref": "KU-0027"
+    },
+    {
+     "key": "B",
+     "text": "d-e-a-b-c",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0026"
+    },
+    {
+     "key": "C",
+     "text": "d-e-b-a-c",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "adjacent_value",
+     "ku_ref": "KU-0020"
+    },
+    {
+     "key": "D",
+     "text": "a-b-c-d-e",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "overgeneralization",
+     "ku_ref": "KU-0021"
+    }
+   ],
+   "answer": "B",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0026",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0027",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0020",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0021",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0022",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 3332,
+     "char_end": 3432,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 3433,
+     "char_end": 3552,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 3553,
+     "char_end": 3669,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 3670,
+     "char_end": 3797,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 3798,
+     "char_end": 3898,
+     "table_ref": "articles"
+    }
+   ],
+   "explanation": "12 defines the State, 13 voids inconsistent laws, 14 is equality, 15 bars listed-ground discrimination, 16 is public employment. Wrong codes swap neighbours — the table order is the check.",
+   "memory_aid": "Table run: 12 State, 13 laws, 14 equality, 15 no-discrimination, 16 jobs.",
+   "hint": null,
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "association"
+  },
+  {
+   "id": "Q-0015",
+   "type": "match_pairs",
+   "stem": "Match: 1. Article 17 2. Article 18 3. Article 19 4. Article 20 5. Article 21. Subjects: (a) Six freedoms (b) Life and personal liberty (c) Abolition of untouchability (d) Abolition of titles (e) Protection in convictions. Correct code 1-2-3-4-5:",
+   "options": [
+    {
+     "key": "A",
+     "text": "c-d-e-a-b",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "adjacent_value",
+     "ku_ref": "KU-0030"
+    },
+    {
+     "key": "B",
+     "text": "d-c-a-e-b",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "adjacent_value",
+     "ku_ref": "KU-0029"
+    },
+    {
+     "key": "C",
+     "text": "c-d-a-e-b",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0028"
+    },
+    {
+     "key": "D",
+     "text": "c-a-d-e-b",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "adjacent_value",
+     "ku_ref": "KU-0023"
+    }
+   ],
+   "answer": "C",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0028",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0029",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0023",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0030",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0024",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 3899,
+     "char_end": 3987,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 3988,
+     "char_end": 4080,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 4081,
+     "char_end": 4171,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 4172,
+     "char_end": 4276,
+     "table_ref": "articles"
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>2. Articles at a glance",
+     "block_id": "B-0013",
+     "char_start": 4277,
+     "char_end": 4371,
+     "table_ref": "articles"
+    }
+   ],
+   "explanation": "17 ends untouchability, 18 ends titles, 19 gives six freedoms, 20 guards convictions, 21 guards life/liberty. Each wrong code swaps one adjacent pair.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "association"
+  },
+  {
+   "id": "Q-0027",
+   "type": "elimination_mcq",
+   "stem": "Which of the following is NOT a listed ground of reasonable restrictions under Article 19(2)-(6) in these notes?",
+   "options": [
+    {
+     "key": "A",
+     "text": "Sovereignty and integrity of India",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0055"
+    },
+    {
+     "key": "B",
+     "text": "Public order and decency",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0055"
+    },
+    {
+     "key": "C",
+     "text": "Promotion of educational equality",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0055"
+    },
+    {
+     "key": "D",
+     "text": "Contempt of court and defamation",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0055"
+    }
+   ],
+   "answer": "C",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0055",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 3,
+     "section_path": "Key timeline points to memorise:>4. Article 19: the six freedoms and reasonable restrictions",
+     "block_id": "B-0023",
+     "char_start": 7600,
+     "char_end": 7838,
+     "table_ref": null
+    }
+   ],
+   "explanation": "The source list runs: sovereignty/integrity, security, public order, decency, morality, contempt, defamation, incitement. Educational equality is imported from the Article 15 theme.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "elimination"
+  },
+  {
+   "id": "Q-0030",
+   "type": "elimination_mcq",
+   "stem": "Which of the following is NOT listed in these notes among rights read into Article 21 since 1978?",
+   "options": [
+    {
+     "key": "A",
+     "text": "Livelihood and shelter",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0061"
+    },
+    {
+     "key": "B",
+     "text": "Right to move the Supreme Court",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0061"
+    },
+    {
+     "key": "C",
+     "text": "Dignity and privacy",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0061"
+    },
+    {
+     "key": "D",
+     "text": "Clean environment and speedy trial",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0061"
+    }
+   ],
+   "answer": "B",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0061",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0064",
+     "role": "distractor_basis"
+    }
+   ],
+   "source": [
+    {
+     "page": 3,
+     "section_path": "Key timeline points to memorise:>5. Article 21: life, liberty and an expanding promise",
+     "block_id": "B-0028",
+     "char_start": 8874,
+     "char_end": 9095,
+     "table_ref": null
+    },
+    {
+     "page": 4,
+     "section_path": "Key timeline points to memorise:>6. Article 32: the right to Constitutional remedies",
+     "block_id": "B-0031",
+     "char_start": 9527,
+     "char_end": 9635,
+     "table_ref": null
+    }
+   ],
+   "explanation": "Dignity, livelihood, shelter, health, clean environment, speedy trial, legal aid and privacy are all listed as implied Article 21 rights. Moving the Supreme Court is Article 32, a separate right.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "elimination"
+  },
+  {
+   "id": "Q-0031",
+   "type": "assertion_reason",
+   "stem": "Assertion (A): Article 19 protects freedoms of citizens only. Reason (R): Article 21 protects the life and liberty of all persons including non-citizens. Choose the correct option: 1. Both A and R are true statements. 2. R is the legal contrast the notes draw against A.",
+   "options": [
+    {
+     "key": "A",
+     "text": "Statement 1 is false, but statement 2 is true",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0057",
+     "covers": [
+      2
+     ]
+    },
+    {
+     "key": "B",
+     "text": "Statement 1 is true, but statement 2 is false",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0057",
+     "covers": [
+      1
+     ]
+    },
+    {
+     "key": "C",
+     "text": "1 and 2 are true and 2 correctly relates to 1",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0057",
+     "covers": [
+      1,
+      2
+     ]
+    },
+    {
+     "key": "D",
+     "text": "Both statement 1 and statement 2 are false",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "partial_truth",
+     "ku_ref": "KU-0057",
+     "covers": []
+    }
+   ],
+   "answer": "C",
+   "statements": [
+    {
+     "text": "Article 19 protects the freedoms of citizens only.",
+     "truth_value": true,
+     "ku_basis": "KU-0057",
+     "alteration": null,
+     "alteration_type": "none"
+    },
+    {
+     "text": "Article 21 protects life and liberty of all persons including non-citizens.",
+     "truth_value": true,
+     "ku_basis": "KU-0057",
+     "alteration": null,
+     "alteration_type": "none"
+    }
+   ],
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0057",
+     "role": "primary"
+    },
+    {
+     "ku_id": "KU-0047",
+     "role": "secondary"
+    },
+    {
+     "ku_id": "KU-0039",
+     "role": "secondary"
+    }
+   ],
+   "source": [
+    {
+     "page": 3,
+     "section_path": "Key timeline points to memorise:>4. Article 19: the six freedoms and reasonable restrictions",
+     "block_id": "B-0024",
+     "char_start": 8017,
+     "char_end": 8167,
+     "table_ref": null
+    },
+    {
+     "page": 3,
+     "section_path": "Key timeline points to memorise:>4. Article 19: the six freedoms and reasonable restrictions",
+     "block_id": "B-0021",
+     "char_start": 6940,
+     "char_end": 7031,
+     "table_ref": null
+    },
+    {
+     "page": 2,
+     "section_path": "Key timeline points to memorise:>3. Article 14 and the equality code of Articles 15 and 16",
+     "block_id": "B-0017",
+     "char_start": 5595,
+     "char_end": 5657,
+     "table_ref": null
+    }
+   ],
+   "explanation": "Both sentences are source text, and the notes place the Article 21 'all persons' rule as the explicit contrast to Article 19's 'citizens only'.",
+   "memory_aid": null,
+   "hint": "One article says citizens; the contrasting one says all persons.",
+   "difficulty": "medium",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "cause_effect"
+  },
+  {
+   "id": "Q-0033",
+   "type": "one_liner_mcq",
+   "stem": "Who called Article 32 'the heart and soul of the Constitution'?",
+   "options": [
+    {
+     "key": "A",
+     "text": "Dr. B. R. Ambedkar",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0065"
+    },
+    {
+     "key": "B",
+     "text": "Jawaharlal Nehru",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_person",
+     "ku_ref": null
+    },
+    {
+     "key": "C",
+     "text": "Justice K. S. Puttaswamy",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_person",
+     "ku_ref": "KU-0018"
+    },
+    {
+     "key": "D",
+     "text": "Dr. Rajendra Prasad",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_person",
+     "ku_ref": null
+    }
+   ],
+   "answer": "A",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0065",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 4,
+     "section_path": "Key timeline points to memorise:>6. Article 32: the right to Constitutional remedies",
+     "block_id": "B-0031",
+     "char_start": 9637,
+     "char_end": 9712,
+     "table_ref": null
+    }
+   ],
+   "explanation": "The phrase is Ambedkar's, quoted in the Article 32 discussion. Puttaswamy is the 2017 privacy petitioner — a wrong-person trap from the same notes.",
+   "memory_aid": null,
+   "hint": null,
+   "difficulty": "easy",
+   "topic": "Polity",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "direct_recall"
+  },
+  {
+   "id": "Q-0061",
+   "type": "data_interpretation_mcq",
+   "stem": "The 2011 census recorded Assam at about 31.2 million people with density near 398 per sq km. If a student claims Assam's density is India's highest on this basis, the error is:",
+   "options": [
+    {
+     "key": "A",
+     "text": "The notes give only Assam's figures, with no all-India comparison",
+     "is_correct": true,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0114"
+    },
+    {
+     "key": "B",
+     "text": "The census year quoted in the notes is wrong for Assam",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "wrong_date",
+     "ku_ref": "KU-0114"
+    },
+    {
+     "key": "C",
+     "text": "Density is recorded per square mile rather than per sq km",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0114"
+    },
+    {
+     "key": "D",
+     "text": "The population figure excludes children below fourteen years",
+     "is_correct": false,
+     "distractor_origin": "source_ku",
+     "confusion_type": "near_synonym",
+     "ku_ref": "KU-0034"
+    }
+   ],
+   "answer": "A",
+   "statements": null,
+   "knowledge_units": [
+    {
+     "ku_id": "KU-0114",
+     "role": "primary"
+    }
+   ],
+   "source": [
+    {
+     "page": 5,
+     "section_path": "South-bank tributaries:>9. Soils, climate and key numbers of Assam",
+     "block_id": "B-0054",
+     "char_start": 15189,
+     "char_end": 15301,
+     "table_ref": null
+    }
+   ],
+   "explanation": "The notes state one state's figure; a national rank needs data the source does not contain (R4: no fact outside the document). The other options invent errors the source does not support.",
+   "memory_aid": null,
+   "hint": "What comparison data would a rank need, and does the source contain it?",
+   "difficulty": "hard",
+   "topic": "Geography",
+   "origin": "source",
+   "exam_profile": "GENERAL_PSC",
+   "language": "en",
+   "attempt_count": 0,
+   "correct_count": 0,
+   "last_attempted": null,
+   "last_result": null,
+   "confidence": null,
+   "priority": 3,
+   "purpose": "application"
+  }
+ ]
+}

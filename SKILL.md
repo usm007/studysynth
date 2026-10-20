@@ -1,13 +1,105 @@
+---
+name: doctoquiz
+description: Use when turning reference documents, notes, chapters, or existing question banks into exam-ready multiple-choice sets for UPSC, APSC, State PSC, SSC, Banking, Railways, or Teaching exams; when a bank must be audited, repaired, or proven source-bound and quality-accepted; or when a verified package must be rendered as a standalone HTML quiz or print-ready A4 PDF papers.
+---
+
 # DocToQuiz — operating instructions
+
+Version 1.0 · Python 3.9+.
 
 Serious exam-prep skill (UPSC/APSC/PSC/SSC/Banking/Teaching/etc.). You are the
 reasoner (extract, atomize, judge importance, write questions, blind re-solve);
 scripts are deterministic (ingest, recall, schema/quote/key checks, coverage,
 audit, gate, render). Every LLM step writes a JSON file that scripts validate.
-Nothing is "done" until the deterministic check passes. Stdlib-only (+ reportlab
-for PDF, pypdf for PDF ingest/check, openpyxl for XLSX, pymupdf optional).
+Nothing is "done" until the deterministic check passes. Stdlib-only core (+
+pypdf for PDF ingest/check and delivery validation, reportlab for PDF build,
+openpyxl for XLSX; pymupdf and psutil optional).
 
-## Rules R1–R12 (resolve conflicts toward accuracy first)
+## When to use this skill
+
+- Converting a source document (PDF, DOCX, PPTX, XLSX, TXT, MD, HTML) into a
+  verified question bank for a competitive objective exam.
+- Auditing, repairing, or re-verifying an existing bank: coverage, dedupe,
+  answer-key consistency, distractor quality, source fidelity.
+- Producing deliverables: standalone offline HTML quiz, print-ready A4 PDFs
+  (question paper, answer key, explanations), or a single delivery folder.
+- Any deliverable where "complete" or "validated" must be backed by evidence
+  rather than assertion.
+
+## When not to use
+
+- No source material and the user wants explanation, tutoring, or discussion —
+  answer directly.
+- The request needs facts beyond the source as truth. ENHANCED fidelity is
+  opt-in and every external fact must be tagged and shown.
+- A throwaway trivia list with no accuracy or coverage claim.
+- Bulk prose rewriting or translation of the source.
+
+## Quick start
+
+**Input**: one source file plus an exam profile (`profiles/<EXAM>.json`).
+
+1. **Structure** — deterministic only:
+   ```
+   python scripts/pipeline.py --source <file> --run-id <id> \
+     --profile profiles/<EXAM>.json --config config.default.json
+   ```
+   Writes `build/<id>/document_structure.json` and `anchors.json`. Stages that
+   need the model stop with `pending (LLM step)`; that is expected, not a failure.
+2. **Inventory** — write `knowledge_inventory.json` from `prompts/extract.md` +
+   `prompts/inventory.md`, verify excerpts with `scripts/locate_excerpts.py`,
+   then re-run step 1 adding `--inventory <file>`.
+3. **Bank** — write `question_bank.json` from `prompts/exam-design.md` +
+   `prompts/generate.md`, then re-run adding `--bank <file>`.
+4. **Deliver** — re-run adding `--full` (package + HTML + PDF) or `--deliver`
+   (single delivery folder).
+
+**Outputs** in `build/<id>/`: `quiz_package.json`, `quiz.html`,
+`pdf/question-paper-A.pdf`, `pdf/answer-key-B.pdf`, `pdf/explanations-C.pdf`,
+and the evidence trail (`validation_results.json`, `quality_report.json`,
+`coverage_matrix.json`, `audit_report.json`, `gate.json`, `run_metrics.json`).
+Report status from `gate.json` and the printed FINAL REPORT only.
+
+## Verify the artifact (dry run)
+
+`examples/starter_bank.json` is a small, complete run. From the repo root:
+
+```
+python scripts/pipeline.py --source examples/sample_source.md --run-id verify \
+  --profile profiles/GENERAL_PSC.json --config config.default.json \
+  --inventory examples/sample_inventory.json --bank examples/starter_bank.json \
+  --ignored examples/ignored_anchors.json --full
+```
+
+Expected: `14/14 validated`, `14/14 quality-accepted`, `GATE: PARTIAL` (a starter
+bank cannot cover every tier-1/2 KU or cognitive form), and `build/verify/`
+should contain `quiz_package.json`, `quiz.html`, and three A4 PDFs.
+`pdf_check_report.json` must say `OVERALL: PASS`. A failure here is a defect in
+this manual or its bundled assets, not in the source document.
+
+`examples/ignored_anchors.json` records the six structural anchors (document
+title, section headings, table headers) that are excluded from recall, with a
+reason each. They are layout, not examinable facts.
+
+The 64-question `examples/sample_bank.json` is the legacy coverage fixture used
+by the contract tests. It predates explicit purposes, so it is not the packaging
+demo; `starter_bank.json` is.
+
+## When a gate fails
+
+- `gate.json` and `audit_report.json` are the authority. Read `limitations`,
+  uncovered KUs, and flags; never edit either file to change a verdict.
+- Repair the cause in the inventory or bank, then re-run with
+  `--redo <stage>` — it invalidates that stage and all descendants;
+  `--redo all` forces a full recompute.
+- A nonzero exit from validation is signal, not a crash: rejected questions go
+  to `repair_queue.json` with exact reasons, valid items continue, and each item
+  gets `max_repair_retries` attempts (default 2).
+- Unfixable gaps remain visible. Deliver as LIMITED or PARTIAL with the honest
+  label; never promote a run to COMPREHENSIVE without passing gate evidence.
+  Gap-fill stops at the mode cap (QUICK 1, BALANCED 2, COMPREHENSIVE 5 rounds).
+
+## Rules R1–R13 (resolve conflicts toward accuracy first)
 
 - R1 Knowledge inventory first. Questions come from `knowledge_inventory.json`, never raw text.
 - R2 Mentioning a fact is not coverage. Only `coverage.py` statuses count. CONTENT COVERAGE != COGNITIVE COVERAGE (recall/distinction/application/statement tracked separately per KU).
@@ -38,7 +130,7 @@ for PDF, pypdf for PDF ingest/check, openpyxl for XLSX, pymupdf optional).
 | 9 | — | `scripts/validate_questions.py` (+ profile/mode/config) | `validation_results.json`; rejected = no credit |
 | 10 | `prompts/validate-blind.md` (solve keyless from source) | record | `validation_semantic.json` |
 | 11 | `prompts/validate-semantic.md` (checklist per question) | record | `validation_semantic.json` |
-| 12 | — | `scripts/coverage.py`, `scripts/dedupe.py` | `coverage_matrix.json` (content + cognitive per-KU, purpose/section/tier coverage, CONTENT/CONGITIVE labels), `dedupe_report.json` |
+| 12 | — | `scripts/coverage.py`, `scripts/dedupe.py` | `coverage_matrix.json` (content + cognitive per-KU, purpose/section/tier coverage, CONTENT/COGNITIVE labels), `dedupe_report.json` |
 | 13 | `prompts/audit-review.md` | `scripts/audit.py` | `audit_report.json` (cognitive gaps, distinction gaps, purpose coverage, cluster status) (+ keep `audit_report_roundN.json`) |
 | 14 | `prompts/gap-fill.md` (exact missing forms/clusters/purposes only) | loop 9–13, max 5 rounds | gap-fill bank additions |
 | 15 | — | `scripts/gate.py` → `scripts/report.py` | `gate.json` + printed FINAL REPORT (quote it) |
@@ -161,8 +253,6 @@ Mode selection rules:
 - Reuse only dependency-valid results (`artifact_manifest.json` stage-specific fingerprints);
   `--redo STAGE` invalidates that stage + descendants.
 - Use deterministic code for deterministic decisions; quote script output for
-  every pass/fail claim; never bypass a failed gate or claim COMPREHENSIVE
-  without `gate.py` evidence.
   every pass/fail claim; never bypass a failed gate or claim COMPREHENSIVE
   without `gate.py` evidence.
 

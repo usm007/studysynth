@@ -1,0 +1,38 @@
+[
+  {
+    "anchor_id": "A-1",
+    "value": "Exam Study Notes",
+    "reason": "page_furniture",
+    "note": "Document title repeated in the running header; no examinable claim."
+  },
+  {
+    "anchor_id": "A-3",
+    "value": "Brahmaputra System",
+    "reason": "page_furniture",
+    "note": "Part of the document title; structural, not a statement."
+  },
+  {
+    "anchor_id": "A-5",
+    "value": "Indian Polity",
+    "reason": "non_examinable",
+    "note": "Section heading only; the substantive facts sit in the body text."
+  },
+  {
+    "anchor_id": "A-7",
+    "value": "Physical Geography",
+    "reason": "non_examinable",
+    "note": "Section heading only; the substantive facts sit in the body text."
+  },
+  {
+    "anchor_id": "A-80",
+    "value": "One-line revision point",
+    "reason": "table_header",
+    "note": "Column header; the data cells are inventoried separately."
+  },
+  {
+    "anchor_id": "A-276",
+    "value": "Approx. length (km)",
+    "reason": "table_header",
+    "note": "Column header; the numeric cells are inventoried separately."
+  }
+]
