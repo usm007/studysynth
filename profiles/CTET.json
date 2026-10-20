@@ -1,0 +1,273 @@
+{
+  "blueprint_rules": {
+    "quantitative_blueprint": false,
+    "note": "Select archetypes from source-supported knowledge units. No paper reconstruction."
+  },
+  "country": "India",
+  "current_affairs_mode": "static_focused",
+  "default_language": "source",
+  "difficulty_distribution": {
+    "easy": 30,
+    "hard": 20,
+    "medium": 50
+  },
+  "factual_density": "medium",
+  "name": "CTET",
+  "negative_marking": {
+    "enabled": false,
+    "penalty_fraction": 0,
+    "verified": false
+  },
+  "notes": "Question-authoring style for CBSE CTET Paper I/II. Difficulty values are authoring guidance, not an official paper blueprint. Verify any structural or marking claim against the current official notification.",
+  "options_per_question": 4,
+  "preferred_question_types": [
+    "pedagogy_mcq",
+    "assertion_reason",
+    "statement_based",
+    "reasoning_mcq",
+    "factual_mcq"
+  ],
+  "question_style": "classroom judgement, child development, subject pedagogy and concept application",
+  "question_style_profile": {
+    "archetypes": [
+      {
+        "answer_logic": "The key names a specific, constructive teaching response that fits the described learners and subject; distractors are commonly used but less appropriate responses.",
+        "avoid": "Vague advice such as 'motivate them' or 'use activity-based learning' without saying what the teacher actually does.",
+        "id": "classroom_situation",
+        "label": "Classroom situation",
+        "stem_pattern": "A named class or learner group faces a concrete learning problem in a named subject/topic. Ask which teacher response is most appropriate, or least appropriate.",
+        "use_when": "A source principle becomes observable in a specific classroom episode with learners, a subject and a teaching decision."
+      },
+      {
+        "answer_logic": "The key applies the named theory or developmental principle correctly to the described behaviour; distractors reverse the principle, substitute another stage/theorist, or overgeneralise.",
+        "avoid": "Asking for a definition alone when the source supports an application, or attaching a theorist's name without testing the reasoning.",
+        "id": "child_development",
+        "label": "Child development and learning",
+        "stem_pattern": "Describe a learner's behaviour, error or response, then ask which developmental/learning principle, stage or interpretation explains it best.",
+        "use_when": "The KU concerns Piaget, Vygotsky, Kohlberg, learning theories, motivation, intelligence, personality or socialisation."
+      },
+      {
+        "answer_logic": "The key is the most defensible pedagogical action for the named learning goal; distractors are plausible but mismatched to the goal or the learners.",
+        "avoid": "Generic 'learner-centred is best' answers that would fit any topic.",
+        "id": "best_pedagogical_approach",
+        "label": "Best pedagogical approach",
+        "stem_pattern": "State a specific learning goal and ask which approach, sequence or resource is most appropriate for it.",
+        "use_when": "The source supports comparing pedagogical choices without a single named subject-specific procedure."
+      },
+      {
+        "answer_logic": "The key names the misconception and the next instructional move; distractors misdiagnose the error as carelessness, inability or a different misconception.",
+        "avoid": "Options that only say 'reteach the topic' or 'give more practice' without diagnosing the error.",
+        "id": "learner_error_misconception",
+        "label": "Learner error and misconception",
+        "stem_pattern": "Give a learner's incorrect answer or reasoning, then ask what the error most likely reveals or what the teacher should do next.",
+        "use_when": "The KU explains a common wrong answer, alternative conception, overgeneralisation or procedural slip."
+      },
+      {
+        "answer_logic": "The key identifies the assessment purpose, evidence or feedback use that fits the described decision; distractors confuse formative with summative, diagnosis with ranking, or validity with reliability.",
+        "avoid": "Questions that merely ask for a definition when the source supports a judgement about assessment use.",
+        "id": "assessment_evaluation",
+        "label": "Assessment and evaluation",
+        "stem_pattern": "Describe an assessment decision or evidence set and ask which purpose, instrument or interpretation is most appropriate.",
+        "use_when": "The KU concerns formative/summative assessment, feedback, rubrics, item quality, diagnostic use or reporting."
+      },
+      {
+        "answer_logic": "The key removes the specific barrier while preserving participation and high expectations; distractors lower expectations, isolate the learner or treat the difference as a discipline problem.",
+        "avoid": "Patronising or medical-model language, and options that separate learners without a pedagogical reason.",
+        "id": "inclusive_education",
+        "label": "Inclusive education",
+        "stem_pattern": "Describe a learner with a specific need or a barrier in the learning environment, then ask which teacher action best supports participation and learning.",
+        "use_when": "The KU concerns inclusion, disability, multilingual classrooms, socio-economic disadvantage, gender or individual differences."
+      },
+      {
+        "answer_logic": "The key is the source-supported fact, relationship or explanation; distractors are adjacent concepts, reversed relations, partial truths or scope errors.",
+        "avoid": "Dressing a direct content question in a classroom story that adds no reasoning.",
+        "id": "conceptual_subject_content",
+        "label": "Conceptual subject content",
+        "stem_pattern": "Ask directly about a concept, process, relationship, formula or phenomenon in the subject.",
+        "use_when": "The KU is subject knowledge with low pedagogical relevance or low classroom-application potential."
+      },
+      {
+        "answer_logic": "The key names a concrete subject-specific teaching move; distractors are generic or developmentally inappropriate moves.",
+        "avoid": "Questions answerable by generic pedagogy slogans without knowing the subject.",
+        "id": "subject_pedagogy",
+        "label": "Subject-specific pedagogy",
+        "stem_pattern": "Name the subject, class and topic, then ask which activity, representation, example or sequence best teaches it.",
+        "use_when": "The KU concerns how a particular subject/topic is taught, represented, assessed or made accessible."
+      },
+      {
+        "answer_logic": "The key follows from the passage; distractors may be true in general but unsupported, or distort a detail, inference, vocabulary item or tone.",
+        "avoid": "Answering from general knowledge when the passage does not support the key.",
+        "id": "language_comprehension",
+        "label": "Language comprehension",
+        "stem_pattern": "Provide a short passage, then ask about explicit information, inference, vocabulary in context, grammar or a literary device.",
+        "use_when": "A real passage is available and the KU concerns reading comprehension or language use in context."
+      },
+      {
+        "answer_logic": "The key is the correct language-learning principle or classroom implication; distractors substitute another skill, stage or method.",
+        "avoid": "Turning language pedagogy into isolated grammar terminology recall.",
+        "id": "language_pedagogy",
+        "label": "Language pedagogy",
+        "stem_pattern": "Describe a language-learning goal, learner need or classroom episode and ask which pedagogical principle or response applies.",
+        "use_when": "The KU concerns LSRW development, grammar in context, vocabulary, literature teaching or language assessment, with no passage."
+      },
+      {
+        "answer_logic": "The key states the correct truth combination and explanatory relation; distractors reverse the relation, make one statement false, or make both false.",
+        "avoid": "Using assertion-reason form when the two statements have no substantive relationship.",
+        "id": "statement_assertion_reason",
+        "label": "Statement, assertion and reason",
+        "stem_pattern": "Give two or more short statements, or an Assertion (A) and Reason (R), then ask which combination or relation is correct.",
+        "use_when": "The source supports two related claims whose truth and explanatory link can be tested independently."
+      }
+    ],
+    "assessment_rules": {
+      "purpose": "Test whether the teacher can choose or interpret assessment evidence for a stated decision.",
+      "rules": [
+        "Keep the assessment purpose visible in the stem: diagnosis, feedback, grading, placement or reporting.",
+        "Distractors may confuse formative with summative use, validity with reliability, or evidence with inference.",
+        "Do not ask for a definition when an applied judgement is available."
+      ]
+    },
+    "authoring_rules": {
+      "answer": "Exactly one option must be defensible from the source and the stated situation. The key must not be identifiable by length, grammar or specificity alone.",
+      "explanation": "Explain the key, the closest distractor and the source basis in a few sentences; do not write a textbook page.",
+      "stem": "Write compact, concrete stems. Name the class, subject/topic and the decision when the item is situational. Avoid ornamental detail.",
+      "tone": "Sober, respectful and teacher-facing. No jokes, sarcasm or punitive language."
+    },
+    "classroom_rules": {
+      "rules": [
+        "A classroom scenario needs a concrete class/learner group, a subject or topic, and a visible learning problem or decision.",
+        "Ask for the most appropriate or least appropriate response, not for a slogan.",
+        "All four options must be plausible teacher actions; absurd or punitive options are rejected.",
+        "The best answer must be defensible on pedagogical grounds stated or implied by the source, not by personal preference.",
+        "Do not force conceptual subject content into a classroom story; use a scenario only when the KU has classroom-application potential."
+      ]
+    },
+    "difficulty_rules": {
+      "easy": "Direct recall of one source-supported fact, term, stage or definition.",
+      "hard": "Two or more related claims, a subtle misconception, or an integrated judgement where all options are plausible.",
+      "medium": "Application of a principle to a described learner, distinction between close concepts, or selection of a teaching response.",
+      "rule": "Difficulty comes from reasoning demand, not from convoluted wording or obscure trivia."
+    },
+    "distractor_rules": {
+      "banned_forms": [
+        "all of the above",
+        "none of the above",
+        "none of these",
+        "both (a) and (b)",
+        "cannot be determined"
+      ],
+      "rules": [
+        "Use misconceptions, overgeneralised principles, reversed relations, adjacent stages, wrong assessment purposes and plausible but mismatched teaching moves.",
+        "Each distractor must be plausible to a partially prepared candidate and clearly wrong for a defensible reason.",
+        "Do not use punitive, absurd or obviously unethical options as filler.",
+        "Do not let the key stand out by being much longer, more specific or grammatically different from the distractors.",
+        "Avoid duplicate options and options that differ only by a trivial word."
+      ]
+    },
+    "evidence": {
+      "claims_percentage_distribution": false,
+      "limitations": [
+        "Two official 2026 booklets (Paper I Set V and Paper II Set Z) and one official Paper II key were inspected; this is not a complete census of CTET papers.",
+        "No question-type or section percentage distribution is claimed or inferred from those booklets.",
+        "The official key sometimes records more than one accepted response; this profile still requires exactly one defensible pipeline answer.",
+        "Source coverage depends on the uploaded document; the profile does not add facts beyond SOURCE_BOUND."
+      ],
+      "papers_inspected": [
+        "CBSE CTET Paper I, 07 February 2026, Set V",
+        "CBSE CTET Paper II, 07 February 2026, Set Z",
+        "CBSE CTET Paper II official answer key, 07 February 2026, Sets W-Z"
+      ],
+      "sources": [
+        {
+          "title": "CTET February 2026 question papers",
+          "url": "https://ctet.nic.in/question-paper-feb-2026/",
+          "used_for": "Paper I and Paper II question wording, option patterns and section context."
+        },
+        {
+          "title": "CTET previous-year answer keys",
+          "url": "https://ctet.nic.in/document-category/previous-year-answer-key/",
+          "used_for": "Official answer-key format and accepted-response checks."
+        },
+        {
+          "title": "CTET archive",
+          "url": "https://ctet.nic.in/category/archive/",
+          "used_for": "Locating official archived papers and keys; no structural blueprint inferred."
+        }
+      ],
+      "observed_patterns": [
+        "Frequent assertion-reason and statement-combination items in Child Development and Pedagogy.",
+        "Scenario-based application of Piaget, Vygotsky, Kohlberg, learning theory and motivation.",
+        "Most/least appropriate teacher-response items with four plausible actions.",
+        "Learner-error diagnosis and next-step teaching decisions.",
+        "Assessment purpose, feedback and interpretation items.",
+        "Inclusive-education situations involving participation and barriers.",
+        "Subject content mixed with subject-specific pedagogy in Mathematics, EVS, Science and Social Studies.",
+        "Language sections combine pedagogy items with passage-based inference, vocabulary, grammar and literary-device items."
+      ]
+    },
+    "identity": {
+      "authoring_intent": "Make every item test a teaching judgement, a developmental explanation or a source-grounded subject concept rather than decorative recall.",
+      "label": "CTET",
+      "summary": "CBSE CTET Paper I/II style: compact four-option MCQs that apply child-development and pedagogical principles to concrete learners, classrooms, subjects and assessment decisions."
+    },
+    "language_rules": {
+      "comprehension": "Comprehension keys must be supported by the supplied passage; do not require outside facts.",
+      "passage": "A language_comprehension item must carry a real passage (or a supplied passage) before it can be authored.",
+      "pedagogy": "When no passage exists, use a language-pedagogy item about LSRW, grammar in context, vocabulary, literature or language assessment."
+    },
+    "quality_codes": {
+      "answer_length_clue": "Correct option is conspicuously longer than every distractor.",
+      "assertion_reason_payload_missing": "Statement/assertion-reason item lacks substantive statements.",
+      "classroom_context_insufficient": "Classroom scenario lacks a concrete class, learner and subject/topic.",
+      "content_forced_into_scenario": "Conceptual content is wrapped in an unnecessary classroom story.",
+      "language_passage_missing": "Language comprehension item lacks a real passage.",
+      "subject_pedagogy_too_generic": "Subject-pedagogy item is answerable by a generic slogan."
+    },
+    "selection_rules": {
+      "default_order": [
+        "classroom_situation",
+        "child_development",
+        "best_pedagogical_approach",
+        "learner_error_misconception",
+        "assessment_evaluation",
+        "inclusive_education",
+        "conceptual_subject_content",
+        "subject_pedagogy",
+        "language_comprehension",
+        "language_pedagogy",
+        "statement_assertion_reason"
+      ],
+      "rules": [
+        "Select the archetype from the KU's content_kind, pedagogical_relevance, classroom_application_potential and has_passage tags.",
+        "child_development with high pedagogical relevance normally permits a child_development item and a classroom_situation application.",
+        "subject_content with low pedagogical relevance and low classroom-application potential must stay conceptual_subject_content.",
+        "language_comprehension requires has_passage=true; otherwise use language_pedagogy.",
+        "Use statement_assertion_reason only when two related claims have independent truth value and a substantive explanatory link.",
+        "Vary archetypes across the bank instead of forcing every KU into the same form."
+      ]
+    },
+    "source_rules": {
+      "rules": [
+        "Keep SOURCE_BOUND: every tested claim, including the key's reasoning, must be traceable to the cited source excerpt.",
+        "Do not introduce external facts, statistics, theorists or examples that the source does not support.",
+        "A classroom scenario may add realistic detail only when that detail does not create a new tested fact.",
+        "If the source is insufficient for a scenario or an assertion-reason link, choose a simpler source-grounded form instead."
+      ]
+    },
+    "tagging_rules": {
+      "archetype_hints": "Optional ranked list of archetype ids suggested by the classifier; exam-design makes the final choice.",
+      "classroom_application_potential": "low | medium | high — can this KU support a concrete classroom decision without inventing facts?",
+      "content_kind": "child_development | subject_content | subject_pedagogy | assessment | inclusive_education | learner_error | language_comprehension | language_pedagogy | classroom_situation | statement_assertion_reason",
+      "has_passage": "true only when the source contains a passage that can support comprehension items.",
+      "pedagogical_relevance": "low | medium | high — how directly the KU informs a teaching, learning or assessment decision."
+    }
+  },
+  "reasoning_style": "applied_pedagogy_and_conceptual_reasoning",
+  "revision_policy": {
+    "ku_level": true,
+    "new_form_on_retry": true
+  },
+  "stage": "eligibility",
+  "subject": "general",
+  "target_type_mix": {}
+}

@@ -2,6 +2,12 @@
 
 Role: classifier. Assign tier + exam-value dimensions to each KU.
 
+Profile style context: when the resolved profile contains `question_style_profile`,
+prepend the output of
+`python scripts/profile_style.py --profile <profile.json> --stage classify`
+to this prompt. Profiles without that block (for example `TEACHING.json`) add
+nothing.
+
 Inputs: `kus[]` for ONE logical section + profile + tier_targets. Batch by
 section, not by arbitrary counts, retaining ALL exam-value dimensions, tiers,
 cognitive levels, confusion relationships, prerequisite links and tier-history
@@ -18,13 +24,18 @@ Steps:
    elimination_value -> elimination_mcqs. They are not decoration.
 3. Assign cognitive_level (recall|understanding|distinction|application|analysis),
    confusion_cluster (id shared by confusable KUs), prerequisite_units ([KU-ids]).
+3a. When the profile supplies style tags, also assign `content_kind`,
+   `pedagogical_relevance` (low|medium|high), `classroom_application_potential`
+   (low|medium|high), `has_passage` and optional ranked `archetype_hints`.
+   These tags describe how the KU should be authored, not the paper structure.
+   A language-comprehension hint is valid only when `has_passage=true`.
 4. Assign tier 1 (core) / 2 (important) / 3 (supporting) / 4 (exclude).
 5. Enforce tier_targets {1:100,2:100,3:80,4:0}% coverage intent; tier 4 gets `omission_reason`.
 6. Where safe, include preliminary per-KU question-blueprint hints
-   (suggested purpose/type) in the SAME response to avoid a second
+   (suggested purpose/type/archetype) in the SAME response to avoid a second
    whole-section reasoning pass. These are hints only.
 
-Output JSON shape: `{"section": "...", "kus": [KnowledgeUnit], "blueprint_hints": [{"ku_id": "...", "suggested_purpose": "...", "suggested_type": "..."}]}`.
+Output JSON shape: `{"section": "...", "kus": [KnowledgeUnit], "blueprint_hints": [{"ku_id": "...", "suggested_purpose": "...", "suggested_type": "...", "suggested_archetype": "..."}]}`.
 
 Rules: R3 (unjustified Tier 1/2 downgrades block COMPREHENSIVE), config tier_targets.
 CONTENT COVERAGE != COGNITIVE COVERAGE: a Critical KU normally needs multiple

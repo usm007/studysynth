@@ -131,6 +131,53 @@
     },
     "revision_policy": {
       "type": "object"
+    },
+    "question_style_profile": {
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "object"
+        },
+        "evidence": {
+          "type": "object"
+        },
+        "archetypes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "selection_rules": {
+          "type": "object"
+        },
+        "tagging_rules": {
+          "type": "object"
+        },
+        "authoring_rules": {
+          "type": "object"
+        },
+        "classroom_rules": {
+          "type": "object"
+        },
+        "distractor_rules": {
+          "type": "object"
+        },
+        "language_rules": {
+          "type": "object"
+        },
+        "assessment_rules": {
+          "type": "object"
+        },
+        "difficulty_rules": {
+          "type": "object"
+        },
+        "source_rules": {
+          "type": "object"
+        },
+        "quality_codes": {
+          "type": "object"
+        }
+      }
     }
   },
   "required": [

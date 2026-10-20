@@ -3,10 +3,21 @@
 Role: exam designer. Turn profile into a question blueprint that says WHY each
 question exists, not just what type it is.
 
+Profile style context: when the resolved profile contains `question_style_profile`,
+prepend the output of
+`python scripts/profile_style.py --profile <profile.json> --stage exam-design`
+to this prompt. It supplies archetype selection, difficulty-definition and
+assessment-item guidance only; it never supplies paper counts, durations,
+sections or marks. Profiles without that block add nothing.
+
 Inputs: profile JSON + ALL classified `kus[]` (merged across sections, with
 blueprint_hints) + FIXED_COUNT (if set).
 
 Steps:
+0. If the profile has a question_style_profile, choose one `archetype` per row
+   from the KU's content_kind, pedagogical_relevance, classroom_application_potential
+   and has_passage tags. Never force subject content into a classroom scenario.
+   A language_comprehension archetype requires a real passage.
 1. Apply `target_type_mix`, `difficulty_distribution`, `options_per_question`.
 2. For each candidate KU, read exam value: tier, dimensions{exam_relevance,
    recall_value, conceptual_value, confusion_value, elimination_value,
@@ -36,10 +47,10 @@ Steps:
 9. Cap any section at section_share_cap (2.0x mean share).
 
 Output JSON shape:
-`{"blueprint": [{"ku_id": "...", "qtype": "...", "difficulty": "easy|medium|hard",
+`{"blueprint": [{"ku_id": "...", "qtype": "...", "archetype": "...|null", "difficulty": "easy|medium|hard",
 "purpose": "...", "primary_skill": "...", "cognitive_level": "...",
 "difficulty_reason": "...", "target_knowledge_units": ["KU-..."],
-"confusion_cluster": "...|null"}]}`.
+"confusion_cluster": "...|null", "passage_required": true|false}]}`.
 
 Rules: R7 (never cut important KUs for counts), R8 (section_share_cap),
 config per_ku_cap + options_per_question. Every row must have a purpose.

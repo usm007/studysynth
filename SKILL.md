@@ -47,6 +47,27 @@ for PDF, pypdf for PDF ingest/check, openpyxl for XLSX, pymupdf optional).
 
 `scripts/pipeline.py --source --run-id --profile --config [--processing-mode MODE --inventory --bank --ignored --diff]`
 runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
+
+**Profile style context.** When the resolved profile contains a
+`question_style_profile` block (for example `profiles/CTET.json`), generate the
+style context before the corresponding LLM step and prepend it to that prompt:
+
+```
+python scripts/profile_style.py --profile profiles/CTET.json --stage classify
+python scripts/profile_style.py --profile profiles/CTET.json --stage exam-design
+python scripts/profile_style.py --profile profiles/CTET.json --stage generate
+```
+
+The block changes only how questions are selected and worded. It never supplies
+paper counts, durations, sections, marks or type percentages. Profiles without
+the block (for example `TEACHING.json`) produce no context and keep the generic
+behaviour. After generation, `scripts/validate_questions.py --profile <profile.json>`
+also applies `validate_question_style(question, profile)` from
+`scripts/profile_style.py` and rejects style-specific defects (classroom
+context, absurd distractors, answer-length clues, passage requirements,
+assertion-reason payload, banned option forms) while keeping SOURCE_BOUND
+enforced. Profiles without the style block are unaffected.
+
 `--processing-mode` accepts `QUICK`, `BALANCED` (default), or `COMPREHENSIVE`.
 Stage-specific dependency fingerprints avoid unnecessary stage invalidation on downstream changes.
 `--redo STAGE` invalidates that stage + descendants; `--redo all` forces recompute.
@@ -172,8 +193,12 @@ Mode selection rules:
   exam_relevance also allows very_high; optional recall/conceptual/confusion/elimination/statement values),
   optional `cognitive_level` (recall|understanding|distinction|application|analysis),
   `confusion_cluster`, `prerequisite_units`. Exam-value fields drive blueprinting.
+  Profile-guided banks also carry optional `content_kind`, `pedagogical_relevance`,
+  `classroom_application_potential`, `has_passage` and `archetype_hints`.
 - Question roles: `knowledge_units[{ku_id, role: primary|secondary|distractor_basis}]`;
   coverage = primary full, secondary partial, distractor_basis zero; only `validated` count.
+  Profile-guided questions may also carry `archetype`, `content_kind`,
+  `classroom_context_required` and `passage`; these do not change coverage credit.
 - Statements: `{text, truth_value, ku_basis, alteration, alteration_type}`; options carry
   `covers: [n,...]` for key-logic checking.
 - `confusion_type` enum: near_synonym, adjacent_value, reversed_causality, wrong_date,

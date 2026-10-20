@@ -6,6 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib_common import load_json, save_json, norm, toks, token_set_sim, fail, run_main
+import profile_style
 
 HARD = ("required_fields", "single_select", "key_consistent", "unique_options", "option_count",
         "ku_refs", "primary_ku", "sources_resolve", "source_quote", "statement_logic", "external_ok",
@@ -241,8 +242,10 @@ def main(argv):
     units = inv.get("units") if isinstance(inv, dict) else inv
     st = load_json(a.struct)
     n_opts, thr = 4, 0.85
+    prof = {}
     if a.profile and os.path.isfile(a.profile):
-        n_opts = load_json(a.profile).get("options_per_question", 4)
+        prof = load_json(a.profile)
+        n_opts = prof.get("options_per_question", 4)
     if a.config and os.path.isfile(a.config):
         cfg = load_json(a.config)
         thr = cfg.get("duplicate_threshold", thr)
@@ -255,7 +258,15 @@ def main(argv):
     ntext = norm(st.get("normalized_text", ""))
     seen, results = [], []
     for q in qs:
-        results.append(check_one(q, ku_ids, ku_map, block_ids, ntext, n_opts, a.mode, thr, seen))
+        res = check_one(q, ku_ids, ku_map, block_ids, ntext, n_opts, a.mode, thr, seen)
+        if prof.get("question_style_profile"):
+            style = profile_style.validate_question_style(q, prof)
+            res["checks"]["style_profile"] = style["ok"]
+            if not style["ok"]:
+                res["status"] = "rejected"
+                res["notes"].extend("style %s: %s" % (v["code"], v["message"])
+                                    for v in style["violations"])
+        results.append(res)
     bal = collections.Counter(r["checks"] and q_key(qs, r["id"]) for r in results)
     nb = len(bal) or 1
     kbflag = any(v / max(sum(bal.values()), 1) > 1 / nb + 0.2 for v in bal.values())

@@ -3,13 +3,23 @@
 Role: question author. Write serious exam-style items, 6-8 per call.
 This is a study instrument, not entertainment.
 
+Profile style context: when the resolved profile contains `question_style_profile`,
+prepend the output of
+`python scripts/profile_style.py --profile <profile.json> --stage generate`
+to this prompt. Apply its archetype, classroom, distractor and language rules
+in addition to the generic contract below. Profiles without that block add
+nothing.
+
 Inputs: `rows[]` (6-8 blueprint rows: ku_id, qtype, difficulty, purpose,
-cognitive_level) + cited KUs + profile style. Group rows by section or related
+cognitive_level, archetype) + cited KUs + profile style. Group rows by section or related
 KUs when that improves source context. Batch size is configurable
 (`batching.question_batch_size`, default 8, bounded concurrency up to 4, subject to token limits).
 
 Steps (for EVERY question, full contract retained):
 1. Write stem + exactly `options_per_question` options, one correct.
+   If the row names an `archetype`, author to that archetype. Keep a concrete
+   classroom stem only when the archetype is classroom_situation; test
+   conceptual_subject_content directly.
    Prioritize UPSC/PSC patterns: statement-based sets ("Consider the following
    statements... Which ... is/are correct?"), elimination MCQs with close
    options, distinction questions on confusable facts, association pairs
@@ -21,12 +31,24 @@ Steps (for EVERY question, full contract retained):
    distractor_basis=zero), `source[]`, `explanation`, `difficulty`,
    `difficulty_reason`, `purpose`, `primary_skill`, `cognitive_level`,
    `revision_priority`, `confusion_cluster`, `target_knowledge_units`, `origin`.
+   When the profile defines archetypes, also set `archetype`, `content_kind`,
+   `classroom_context_required` and `passage` (string or null).
 3. Distractors: prefer confusable KUs, adjacent dates/values, related concepts,
    reversed associations, partial truths, scope changes, category swaps,
    causal reversals. Mark `distractor_origin`, `confusion_type`, `ku_ref` and
    `distractor_purpose` (confusable_fact | adjacent_value | partial_truth |
    reversed_relation | wrong_category | wrong_entity | wrong_date |
    scope_error | causal_reversal). No nonsense distractors.
+   For profile-guided banks: every option must be plausible; no punitive,
+   absurd or joke options; no "all/none of the above"; and the key must not be
+   identifiable by being longer or more specific than every distractor.
+3b. PROFILE-SPECIFIC AUTHORING (when supplied): follow the profile's
+   classroom-scenario rules, answer rule, language/passage rule and
+   assertion-reason payload rule. A classroom scenario needs a concrete class,
+   learner and subject/topic; subject pedagogy must name the subject and a
+   specific teaching decision; language_comprehension must include a real
+   `passage`; assertion-reason items need substantive statements. One
+   defensible best answer only.
 4. Explanation must teach: correct answer + why it is correct + why the closest
    alternatives are wrong + source ref. Add `memory_aid`, `hint` (no leak),
    `misconception` where useful. Keep it tight, not a textbook paragraph.

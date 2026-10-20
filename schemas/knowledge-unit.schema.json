@@ -7,6 +7,59 @@
       },
       "type": "array"
     },
+    "content_kind": {
+      "enum": [
+        "child_development",
+        "subject_content",
+        "subject_pedagogy",
+        "assessment",
+        "inclusive_education",
+        "learner_error",
+        "language_comprehension",
+        "language_pedagogy",
+        "classroom_situation",
+        "statement_assertion_reason"
+      ],
+      "type": "string"
+    },
+    "pedagogical_relevance": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "classroom_application_potential": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "has_passage": {
+      "type": "boolean"
+    },
+    "archetype_hints": {
+      "items": {
+        "enum": [
+          "classroom_situation",
+          "child_development",
+          "best_pedagogical_approach",
+          "learner_error_misconception",
+          "assessment_evaluation",
+          "inclusive_education",
+          "conceptual_subject_content",
+          "subject_pedagogy",
+          "language_comprehension",
+          "language_pedagogy",
+          "statement_assertion_reason"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
     "dimensions": {
       "additionalProperties": false,
       "properties": {
