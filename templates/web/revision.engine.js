@@ -697,7 +697,7 @@ var RevisionEngine = (function () {
       if (!Array.isArray(s.events)) s.events = [];
       if (!s.revision_state || typeof s.revision_state !== "object")
         s.revision_state = { queue: [], sessions: [] };
-      if (!s.mode || ["practice", "test", "revision", "analytics"].indexOf(s.mode) < 0) s.mode = "practice";
+      if (!s.mode || ["practice", "study", "test", "revision", "analytics"].indexOf(s.mode) < 0) s.mode = "practice";
       Object.keys(s.answers).forEach(function (qid) {
         var a = s.answers[qid];
         if (a && typeof a === "object") {
@@ -710,7 +710,7 @@ var RevisionEngine = (function () {
     }
     var answers = {}, notes = [];
     var mode = raw.mode || "practice";
-    if (["practice", "test", "revision", "analytics"].indexOf(mode) < 0) { mode = "practice"; notes.push("unknown mode remapped to practice"); }
+    if (["practice", "study", "test", "revision", "analytics"].indexOf(mode) < 0) { mode = "practice"; notes.push("unknown mode remapped to practice"); }
     if (raw.answers && typeof raw.answers === "object") {
       Object.keys(raw.answers).forEach(function (qid) {
         var a = raw.answers[qid];

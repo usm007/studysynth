@@ -1,12 +1,12 @@
 {
   "release_version": "1.0.0",
-  "overall_status": "PASS",
+  "overall_status": "FAIL",
   "checks": [
     {
       "name": "full_test_suite",
-      "passed": true,
-      "tests_run": 379,
-      "failures": 0,
+      "passed": false,
+      "tests_run": 423,
+      "failures": 15,
       "errors": 0,
       "skipped": 0
     },

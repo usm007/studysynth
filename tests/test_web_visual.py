@@ -68,7 +68,7 @@ class TestShellLayout(unittest.TestCase):
 
 
 class TestModes(unittest.TestCase):
-    MODES = ["practice", "test", "revision"]
+    MODES = ["practice", "study", "test", "revision"]
 
     def test_all_modes_present_with_descriptions(self):
         t = tpl_text()
@@ -137,6 +137,10 @@ class TestQuestionUX(unittest.TestCase):
         self.assertIn("match-cols", t)
         self.assertIn("Match the following", t)
         self.assertIn("parseMatchLists", t)
+        # Ensure match markers are properly centered badges and don't dangle with inline-block / baseline
+        self.assertIn(".layout-match .match-cols .stmt-list .stmt-n", t)
+        self.assertNotIn(".layout-match .match-cols .stmt-list .stmt-n {\n    font-weight: 850 !important;\n    color: var(--md-primary, #2d5a3f) !important;\n    width: 18px !important;\n    display: inline-block", t)
+        self.assertIn("place-items: center", t)
 
     def test_feedback_teaches(self):
         t = tpl_text()
@@ -230,14 +234,27 @@ class TestResponsivePrint(unittest.TestCase):
         self.assertIn("@media print", t)
         self.assertIn("break-inside:avoid", t)
 
+    def test_print_answer_key_follows_questions(self):
+        t = tpl_text()
+        self.assertIn('#printSheet .pq-key-grid', t)
+        self.assertIn('break-before: page', t)
+        end = t.find('<p class="pq-end">End of question paper</p>')
+        key = t.find('<section class="pq-key">')
+        self.assertGreater(end, -1)
+        self.assertGreater(key, end)
+        self.assertIn('class="pq-kav"', t)
+
 
 class TestOfflineBuild(unittest.TestCase):
     def test_placeholders_and_offline(self):
         t = tpl_text()
         self.assertIn("/*__PACKAGE__*/{}", t)
         self.assertIn('/*__STATUS__*/""', t)
+        # XML namespace identifiers (OOXML, Dublin Core) are not network assets.
+        namespaces = ("w3.org", "openxmlformats.org", "purl.org",
+                      "schemas.microsoft.com")
         ext = [u for u in re.findall(r"https?://[^\s\"'<>]+", t)
-               if "w3.org" not in u]
+               if not any(ns in u for ns in namespaces)]
         self.assertEqual(ext, [], ext)
 
     def test_generated_output(self):
@@ -318,6 +335,40 @@ class TestRevisionUI(unittest.TestCase):
         for phrase in ["you keep failing", "bad performance",
                        "you don't understand", "you do not understand"]:
             self.assertNotIn(phrase, t, phrase)
+
+
+class TestStudyPage(unittest.TestCase):
+    """Read-only study page: topic > section > key points."""
+
+    def test_study_destination_present(self):
+        t = tpl_text()
+        self.assertIn('data-mode="study"', t)
+        self.assertIn('data-bnav="study"', t)
+        self.assertIn('id="studyview"', t)
+        self.assertIn('id="studyGuide"', t)
+        self.assertIn("function showStudy()", t)
+        self.assertIn("function renderStudyGuide()", t)
+
+    def test_study_notes_source_priority(self):
+        t = tpl_text()
+        self.assertIn("PKG.study_notes", t)
+        self.assertIn("KU_EXCERPTS", t)
+        self.assertIn("studyFromCurated", t)
+        self.assertIn("buildStudyNotes", t)
+
+    def test_study_page_collapsible_topics(self):
+        t = tpl_text()
+        self.assertIn('<details class="sg-topic"', t)
+        self.assertIn('<summary class="sg-topic-head"', t)
+        self.assertIn(".sg-topic-head", t)
+        self.assertIn("min-height: 58px", t)
+
+    def test_study_mode_keeps_app_shell_clean(self):
+        t = tpl_text()
+        self.assertIn('body[data-mode="study"] .topbar-progress', t)
+        self.assertIn('body[data-mode="study"] #quizview', t)
+        self.assertIn('body[data-mode="study"] #resetSessionBtn', t)
+        self.assertIn('body[data-mode="study"] .workcol', t)
 
 
 class TestEditorialIdentity(unittest.TestCase):

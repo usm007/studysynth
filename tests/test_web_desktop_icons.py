@@ -160,8 +160,8 @@ class TestPhoneDestinationNav(unittest.TestCase):
         self.assertIn('id="bottomnav"', t)
         nav = t[t.find('id="bottomnav"'):]
         nav = nav[:nav.find("</nav>")]
-        for value, label in (("practice", "Study"), ("test", "Test"),
-                             ("revision", "Revision")):
+        for value, label in (("practice", "Practice"), ("study", "Study"),
+                             ("test", "Test"), ("revision", "Revision")):
             self.assertIn('data-bnav="%s"' % value, nav)
             self.assertIn(">%s<" % label, nav)
         self.assertIn('id="bnavAnalytics"', nav)
