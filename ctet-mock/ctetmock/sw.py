@@ -66,6 +66,13 @@ self.addEventListener("fetch", (event) => {{
 self.addEventListener("message", (event) => {{
   const data = event.data || {{}};
   if (data.type === "SKIP_WAITING") self.skipWaiting();
+  if (data.type === "CACHE_STATUS" && event.ports && event.ports[0]) {{
+    event.waitUntil((async () => {{
+      const cache = await caches.open(CACHE_NAME);
+      const keys = await cache.keys();
+      event.ports[0].postMessage({{ cached: keys.length, expected: PRECACHE.length }});
+    }})());
+  }}
 }});
 
 async function respond(request, url) {{
