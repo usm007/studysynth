@@ -205,5 +205,67 @@ class TestBuildCommand(unittest.TestCase):
         self.assertEqual(catalog["counts"]["mocks"], 0)
 
 
+class TestDeployment(unittest.TestCase):
+    def setUp(self):
+        self.config = json.loads(
+            (ROOT / "vercel.json").read_text(encoding="utf-8")
+        )
+
+    def test_vercel_config_is_valid_json(self):
+        self.assertIsInstance(self.config, dict)
+
+    def test_serves_the_public_folder(self):
+        self.assertEqual(self.config["outputDirectory"], "public")
+
+    def test_does_not_rewrite_urls(self):
+        self.assertFalse(self.config.get("cleanUrls", False))
+
+    def test_the_worker_is_never_cached_stale(self):
+        sources = [rule["source"] for rule in self.config["headers"]]
+        self.assertIn("/sw.js", sources)
+
+    def test_the_catalogue_is_revalidated(self):
+        sources = [rule["source"] for rule in self.config["headers"]]
+        self.assertIn("/catalog.json", sources)
+
+    def test_icons_are_cached_for_a_year(self):
+        rules = {rule["source"]: rule for rule in self.config["headers"]}
+        icons = rules.get("/icons/(.*)")
+        self.assertIsNotNone(icons)
+        value = icons["headers"][0]["value"]
+        self.assertIn("immutable", value)
+
+    def test_no_build_step_is_required(self):
+        self.assertNotIn("buildCommand", self.config)
+
+
+class TestSeedContent(unittest.TestCase):
+    def test_a_demo_mock_is_published(self):
+        mocks = ROOT / "public" / "mocks"
+        files = sorted(mocks.glob("*.html"))
+        self.assertTrue(files, "the library ships with no demo mock")
+
+    def test_the_demo_mock_is_classified(self):
+        from ctetmock import intake
+
+        path = ROOT / "public" / "mocks" / "p2-social-c8-natural-resources-m01.html"
+        self.assertTrue(path.is_file())
+        record = intake.classify(path, path.read_text(encoding="utf-8"))
+        self.assertEqual(record["paper"], "Paper II")
+        self.assertEqual(record["subject"], "Social Science")
+        self.assertEqual(record["klass"], 8)
+        self.assertEqual(record["lesson"], "Natural Resources")
+        self.assertEqual(record["mock_label"], "Mock 1")
+        self.assertTrue(intake.is_complete(record))
+
+    def test_the_demo_mock_carries_questions(self):
+        from ctetmock import intake
+
+        path = ROOT / "public" / "mocks" / "p2-social-c8-natural-resources-m01.html"
+        package = intake.read_package(path.read_text(encoding="utf-8"))
+        self.assertIsNotNone(package)
+        self.assertGreater(package["question_count"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

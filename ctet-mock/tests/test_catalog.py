@@ -78,6 +78,15 @@ class TestCatalogShape(unittest.TestCase):
         self.assertEqual(mock["questions"], 10)
         self.assertEqual(mock["status"], "COMPREHENSIVE")
 
+    def test_tree_mocks_carry_their_ancestry(self):
+        mock = (self.catalog["papers"][1]["subjects"][1]["classes"][0]
+                ["lessons"][0]["mocks"][0])
+        self.assertEqual(mock["paper"], "Paper II")
+        self.assertEqual(mock["subject"], "Social Science")
+        self.assertEqual(mock["klass"], 8)
+        self.assertEqual(mock["lesson"], "Natural Resources")
+        self.assertEqual(mock["mockLabel"], "Mock 1")
+
     def test_flat_mock_list_carries_full_ancestry(self):
         by_file = {m["file"]: m for m in self.catalog["mocks"]}
         mock = by_file["mocks/d.html"]

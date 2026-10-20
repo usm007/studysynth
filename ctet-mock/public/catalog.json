@@ -1,0 +1,76 @@
+{
+ "version": "3d87d9678127",
+ "counts": {
+  "papers": 1,
+  "subjects": 1,
+  "classes": 1,
+  "lessons": 1,
+  "mocks": 1
+ },
+ "papers": [
+  {
+   "id": "paper-2",
+   "name": "Paper II",
+   "classRange": "Class VI–VIII",
+   "subjects": [
+    {
+     "id": "paper-2__subject-social-science",
+     "name": "Social Science",
+     "classes": [
+      {
+       "id": "paper-2__subject-social-science__class-class-8",
+       "name": "Class 8",
+       "lessons": [
+        {
+         "id": "paper-2__subject-social-science__class-class-8__lesson-natural-resources",
+         "name": "Natural Resources",
+         "mocks": [
+          {
+           "id": "paper-2__subject-social-science__class-class-8__lesson-natural-resources__mock-mock-1",
+           "name": "Mock 1",
+           "title": "Natural Resources · Mock 1",
+           "file": "mocks/p2-social-c8-natural-resources-m01.html",
+           "questions": 24,
+           "status": "CURATED",
+           "sessionKey": "quiz_session_v2_Natural_Resources_Mock_1",
+           "paperId": "paper-2",
+           "subjectId": "paper-2__subject-social-science",
+           "classId": "paper-2__subject-social-science__class-class-8",
+           "lessonId": "paper-2__subject-social-science__class-class-8__lesson-natural-resources",
+           "paper": "Paper II",
+           "subject": "Social Science",
+           "klass": 8,
+           "lesson": "Natural Resources",
+           "mockLabel": "Mock 1"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "mocks": [
+  {
+   "id": "paper-2__subject-social-science__class-class-8__lesson-natural-resources__mock-mock-1",
+   "name": "Mock 1",
+   "title": "Natural Resources · Mock 1",
+   "file": "mocks/p2-social-c8-natural-resources-m01.html",
+   "questions": 24,
+   "status": "CURATED",
+   "sessionKey": "quiz_session_v2_Natural_Resources_Mock_1",
+   "paperId": "paper-2",
+   "subjectId": "paper-2__subject-social-science",
+   "classId": "paper-2__subject-social-science__class-class-8",
+   "lessonId": "paper-2__subject-social-science__class-class-8__lesson-natural-resources",
+   "paper": "Paper II",
+   "subject": "Social Science",
+   "klass": 8,
+   "lesson": "Natural Resources",
+   "mockLabel": "Mock 1"
+  }
+ ],
+ "cacheName": "ctet-mock-3d87d9678127"
+}

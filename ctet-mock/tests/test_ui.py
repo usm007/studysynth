@@ -166,6 +166,33 @@ class TestLandingInBrowser(BrowserTestCase):
         finally:
             page.close()
 
+    def test_mock_card_shows_its_badge(self):
+        page = self.open_landing()
+        try:
+            page.click('[data-go="paper"][data-id="paper-2"]')
+            page.wait_for_selector(".view-subjects")
+            page.click('.view-subjects button:has-text("Social Science")')
+            page.wait_for_selector(".view-classes")
+            page.click('.view-classes button:has-text("Class 8")')
+            page.wait_for_selector(".view-lessons")
+            page.click('.view-lessons button:has-text("Natural Resources")')
+            page.wait_for_selector(".view-mocks")
+            badges = page.inner_text(".mock-badges")
+            self.assertIn("Paper II", badges)
+            self.assertIn("Social Science", badges)
+            self.assertIn("Class 8", badges)
+        finally:
+            page.close()
+
+    def test_card_title_and_subtitle_are_on_separate_lines(self):
+        page = self.open_landing()
+        try:
+            display = page.eval_on_selector(
+                ".view-papers .card-title", "el => getComputedStyle(el).display")
+            self.assertEqual(display, "block")
+        finally:
+            page.close()
+
     def test_breadcrumb_tracks_the_drill_down(self):
         page = self.open_landing()
         try:

@@ -191,24 +191,19 @@ def build_catalog(records: list[dict], version: str = "0" * 12) -> dict:
             "questions": record.get("questions", 0),
             "status": record.get("status", ""),
             "sessionKey": session_key(record.get("title") or file_name),
+            "paperId": paper["id"],
+            "subjectId": subject["id"],
+            "classId": klass_node["id"],
+            "lessonId": lesson["id"],
+            "paper": paper_name,
+            "subject": subject_name,
+            "klass": klass,
+            "lesson": lesson_name,
+            "mockLabel": label,
         }
         lesson["mocks"].append(mock)
         counts["mocks"] += 1
-
-        flat.append(
-            {
-                **mock,
-                "paperId": paper["id"],
-                "subjectId": subject["id"],
-                "classId": klass_node["id"],
-                "lessonId": lesson["id"],
-                "paper": paper_name,
-                "subject": subject_name,
-                "klass": klass,
-                "lesson": lesson_name,
-                "mockLabel": label,
-            }
-        )
+        flat.append(mock)
 
     return {
         "version": version,

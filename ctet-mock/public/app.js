@@ -121,6 +121,10 @@
     );
   }
 
+  function plural(count, word) {
+    return count + " " + word + (count === 1 ? "" : "s");
+  }
+
   function row(title, sub, count, go, id) {
     return (
       '<button class="card" type="button" data-go="' + go + '" data-id="' + esc(id) + '">' +
@@ -142,8 +146,8 @@
       '<div class="hero"><h2>CTET Mock</h2>' +
       "<p>Mock papers for CTET Paper I and Paper II, filed by subject, class and lesson.</p>" +
       '<div class="hero-stats">' +
-      '<span class="stat-pill">' + catalog.papers.length + " papers</span>" +
-      '<span class="stat-pill">' + total + " mock papers</span>" +
+      '<span class="stat-pill">' + plural(catalog.papers.length, "paper") + "</span>" +
+      '<span class="stat-pill">' + plural(total, "mock paper") + "</span>" +
       '<span class="stat-pill">Ready offline</span>' +
       "</div></div>";
     if (total) {
@@ -152,7 +156,7 @@
     catalog.papers.forEach(function (paper) {
       html += row(
         paper.name,
-        (paper.classRange || "") + " · " + paper.subjects.length + " subjects",
+        (paper.classRange || "") + " · " + plural(paper.subjects.length, "subject"),
         countMocks(paper),
         "paper",
         paper.id
@@ -176,7 +180,7 @@
     paper.subjects.forEach(function (subject) {
       html += row(
         subject.name,
-        subject.classes.length + " classes",
+        plural(subject.classes.length, "class"),
         countMocks(subject),
         "subject",
         subject.id
@@ -196,7 +200,7 @@
     subject.classes.forEach(function (klass) {
       html += row(
         klass.name,
-        klass.lessons.length + " lessons",
+        plural(klass.lessons.length, "lesson"),
         countMocks(klass),
         "class",
         klass.id
@@ -216,7 +220,7 @@
     klass.lessons.forEach(function (lesson) {
       html += row(
         lesson.name,
-        lesson.mocks.length + " mock papers",
+        plural(lesson.mocks.length, "mock paper"),
         countMocks(lesson),
         "lesson",
         lesson.id
