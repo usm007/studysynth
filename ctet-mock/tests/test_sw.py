@@ -152,7 +152,7 @@ class TestBuildCommand(unittest.TestCase):
         html = (self.public / "mocks" /
                 "p2-social-c8-natural-resources-m01.html").read_text(encoding="utf-8")
         self.assertEqual(intake.read_package(html)["meta"]["title"],
-                         "Natural Resources · Mock 1")
+                         "Mock 1 · Natural Resources")
 
     def test_build_can_leave_the_mock_title_alone(self):
         self.add_mock("p2-social-c8-natural-resources-m01.html",

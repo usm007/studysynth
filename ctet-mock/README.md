@@ -89,20 +89,29 @@ python ctet-mock/build.py
 It prints what it found:
 
 ```
-paper   subject        class  lesson              mock    questions  source
-------  -------------  -----  ------------------  ------  ---------  ---------
-Paper I Environmental  4      Plants              Mock 1  24         filename
-Paper II Social Sci    8      Natural Resources   Mock 1  24         filename
+paper     subject         class  lesson             mock    questions  source
+--------  --------------  -----  -----------------  ------  ---------  ---------
+Paper I   Environmental   4      Plants             Mock 1  24         filename
+Paper II  Social Science  8      Natural Resources  Mock 1  24         filename
 ```
 
-Anything it cannot file is reported as `INCOMPLETE` and the command exits
-with an error, so a paper never silently disappears. `--allow-unclassified`
-publishes them anyway under an "Unclassified" heading.
+Anything it cannot publish is reported as `INCOMPLETE` or `PROBLEM` and the
+command exits with an error, so a paper never silently disappears:
+
+- a file that is not a `.html` mock
+- a mock whose name uses anything but letters, digits, dots, dashes and
+  underscores
+- a mock that carries no questions (a truncated download, or the wrong file)
+- a mock with no paper, subject or class
+
+`--allow-unclassified` publishes them anyway under an "Unclassified" heading.
 
 **4. Commit and deploy.**
 
-The build also gives every mock a distinct title inside the mock itself, so
-two mocks of the same lesson never share a saved session.
+The build gives every mock a title of its own - `Mock 1 · Natural Resources` -
+and writes that title, and the classification it worked out, back into the
+mock. A rebuild never changes a paper's title, so the session you saved under
+it is never lost, and two papers of the same lesson never share one session.
 
 ## 3. Trying it on a phone
 
@@ -135,10 +144,13 @@ side build - just run `python ctet-mock/build.py` and commit before deploying.
 
 - The service worker precaches the library, the catalogue, the icons and
   every mock the first time the app opens.
-- A banner reports how much is cached while it fills up.
+- A banner reports how much is cached while it fills up, and names any paper
+  that could not be saved so it is never a silent gap.
 - The cache is keyed on the **content** of the files, so a paper you
   regenerate under the same name still reaches the phone.
-- When a new version is ready, a banner offers a refresh.
+- When a new version is ready, a banner offers a refresh. The refresh really
+  refreshes: the new worker waits until you accept it, then the library is
+  reloaded.
 
 ## 6. Tests
 
@@ -150,9 +162,13 @@ python -m pytest ctet-mock/tests -v
 - `test_intake.py` - the naming convention and the fallbacks
 - `test_catalog.py` - the tree, the ordering, unique titles and session keys
 - `test_sw.py` - the offline worker, the build command, the deploy config
+- `test_hardening.py` - the failures a real library hits: a rebuild that
+  renames a paper, a truncated mock, a file name that breaks a URL, a paper
+  that cannot be cached
 - `test_ui_static.py` - the landing page and the player
-- `test_ui.py` - a real browser: the drill-down, the search, the player, and
-  the whole library with the network switched off
+- `test_ui.py` - a real browser: the drill-down, the search, the player, the
+  library with the network switched off, a paper that could not be cached,
+  and a new version reaching the device
 
 `test_ui.py` needs Playwright with Chromium installed; it skips itself if
 they are missing.

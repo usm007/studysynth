@@ -11,7 +11,8 @@
     subjectId: null,
     classId: null,
     lessonId: null,
-    query: ""
+    query: "",
+    offline: null
   };
 
   var ICONS = {
@@ -125,6 +126,22 @@
     return count + " " + word + (count === 1 ? "" : "s");
   }
 
+  function offlineLabel() {
+    var status = state.offline;
+    if (!status) return "Preparing offline";
+    var failed = status.failed || [];
+    if (failed.length) {
+      return failed.length + " unavailable offline";
+    }
+    if (status.cached >= status.expected) return "Ready offline";
+    return "Caching " + status.cached + "/" + status.expected;
+  }
+
+  function updateOfflinePill() {
+    var pill = document.getElementById("offlinePill");
+    if (pill) pill.textContent = offlineLabel();
+  }
+
   function row(title, sub, count, go, id) {
     return (
       '<button class="card" type="button" data-go="' + go + '" data-id="' + esc(id) + '">' +
@@ -148,7 +165,7 @@
       '<div class="hero-stats">' +
       '<span class="stat-pill">' + plural(catalog.papers.length, "paper") + "</span>" +
       '<span class="stat-pill">' + plural(total, "mock paper") + "</span>" +
-      '<span class="stat-pill">Ready offline</span>' +
+      '<span class="stat-pill" id="offlinePill">' + offlineLabel() + "</span>" +
       "</div></div>";
     if (total) {
       html += row("All mock papers", "Search and open any paper", total, "all", "");
@@ -422,14 +439,24 @@
 
   function reportCache(status) {
     if (!status) return;
-    if (status.cached >= status.expected) {
+    state.offline = status;
+    var failed = status.failed || [];
+    if (failed.length) {
+      var names = failed.map(function (url) {
+        return url.replace(/^.*\//, "").replace(/\.html$/, "");
+      });
+      showBanner("offlineBanner",
+        failed.length + " paper(s) could not be saved for offline use: " +
+        names.join(", "));
+    } else if (status.cached >= status.expected) {
       showBanner("offlineBanner", "");
-      setStatus(state.catalog.counts.mocks + " mock papers · ready offline");
-      return;
+    } else {
+      showBanner("offlineBanner",
+        "Preparing offline library · " + status.cached + "/" + status.expected);
     }
-    showBanner("offlineBanner",
-      "Preparing offline library · " + status.cached + "/" + status.expected);
-    setStatus("Caching for offline · " + status.cached + "/" + status.expected);
+    if (!state.catalog) return;
+    setStatus(plural(state.catalog.counts.mocks, "mock paper") + " · " + offlineLabel());
+    updateOfflinePill();
   }
 
   function setupWorker(registration) {
@@ -473,7 +500,19 @@
         });
       });
       navigator.serviceWorker.addEventListener("controllerchange", function () {
-        if (reloading) window.location.reload();
+        if (reloading) {
+          window.location.reload();
+          return;
+        }
+        // A new worker took over. If it serves a different library, load it.
+        if (!window.caches) return;
+        window.caches.keys().then(function (names) {
+          var wanted = state.catalog ? state.catalog.cacheName : null;
+          var changed = names.some(function (name) {
+            return name.indexOf("ctet-mock-") === 0 && name !== wanted;
+          });
+          if (changed) window.location.reload();
+        });
       });
       setupWorker(registration);
     }).catch(function () {
@@ -500,7 +539,7 @@
       .then(function (catalog) {
         state.catalog = catalog;
         render();
-        setStatus(catalog.counts.mocks + " mock papers");
+        setStatus(plural(catalog.counts.mocks, "mock paper"));
         return catalog;
       })
       .catch(function () {

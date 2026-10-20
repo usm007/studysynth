@@ -133,7 +133,7 @@ body {
   transition: background 0.15s var(--ease);
 }
 .btn:hover { background: var(--accent-2); }
-.btn-sm { min-height: 36px; padding: 0.3rem 0.7rem; font-size: 0.82rem; }
+.btn-sm { min-height: 44px; padding: 0.35rem 0.7rem; font-size: 0.82rem; }
 .btn-secondary { background: var(--surface-2); color: var(--ink-2); border-color: var(--line); }
 .btn-secondary:hover { background: var(--surface-3); }
 
@@ -366,7 +366,10 @@ body {
 
 /* ----------------------------------------------------------------- player */
 
-body.player { padding: 0; overflow: hidden; }
+body.player {
+  padding: 0 0 env(safe-area-inset-bottom);
+  overflow: hidden;
+}
 
 #playerBar {
   display: flex;
@@ -378,7 +381,7 @@ body.player { padding: 0; overflow: hidden; }
   color: #fff;
 }
 #playerBack {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex; align-items: center; gap: 0.3rem;
   padding: 0.35rem 0.6rem;
   border-radius: 8px;
@@ -397,7 +400,7 @@ body.player { padding: 0; overflow: hidden; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 #playerOpen {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex; align-items: center;
   padding: 0.35rem 0.6rem;
   border-radius: 8px;
@@ -411,8 +414,8 @@ body.player { padding: 0; overflow: hidden; }
 #playerFrame {
   display: block;
   width: 100%;
-  height: calc(100vh - 46px - env(safe-area-inset-top));
-  height: calc(100dvh - 46px - env(safe-area-inset-top));
+  height: calc(100vh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  height: calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   border: 0;
   background: var(--bg);
 }

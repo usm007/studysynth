@@ -126,11 +126,13 @@ def parse_tokens(stem: str) -> dict:
 
     for index, token in enumerate(tokens):
         lowered = token.lower()
-        if paper is None and lowered in PAPER_TOKENS:
+        # The paper and the subject sit at the front of the name; a later word
+        # that happens to match is part of the lesson, not the subject.
+        if index <= 1 and paper is None and lowered in PAPER_TOKENS:
             paper = PAPER_TOKENS[lowered]
             recognised = True
             continue
-        if subject is None and lowered in SUBJECT_TOKENS:
+        if index <= 1 and subject is None and lowered in SUBJECT_TOKENS:
             subject = SUBJECT_TOKENS[lowered]
             recognised = True
             continue
@@ -206,8 +208,14 @@ def extract_package(html: str) -> str | None:
     return html[span[0]:span[1]]
 
 
-def rewrite_package_title(html: str, new_title: str) -> str:
-    """Set the package title inside a mock document, leaving the rest alone."""
+def rewrite_package_title(html: str, new_title: str,
+                          library: dict | None = None) -> str:
+    """Set the package title inside a mock document, leaving the rest alone.
+
+    The library record is written alongside it so that a later build reads the
+    same classification back instead of re-deriving it from a title this
+    build has just written.
+    """
     span = _package_span(html)
     if not span:
         return html
@@ -222,7 +230,11 @@ def rewrite_package_title(html: str, new_title: str) -> str:
     if not isinstance(meta, dict):
         meta = {}
         package["meta"] = meta
-    if meta.get("title") == new_title:
+    if library is not None:
+        meta["library"] = library
+    if meta.get("title") == new_title and (
+        library is None or meta.get("library") == library
+    ):
         return html
     meta["title"] = new_title
     payload = json.dumps(package, ensure_ascii=False, separators=(",", ":"))
@@ -243,6 +255,22 @@ def read_package(html: str) -> dict | None:
     questions = package.get("questions")
     package["question_count"] = len(questions) if isinstance(questions, list) else 0
     return package
+
+
+def compose_title(lesson: str | None, label: str | None, fallback: str = "") -> str:
+    """The title a mock carries.
+
+    The mock label comes first so that the first forty characters - all the
+    saved session key is made of - always tell two papers of the same lesson
+    apart.
+    """
+    if label and lesson:
+        return f"{label} · {lesson}"
+    if label:
+        return label
+    if lesson:
+        return lesson
+    return fallback
 
 
 def _package_class(meta: dict) -> int | None:
@@ -277,6 +305,9 @@ def classify(path: Path, html: str, sidecar: dict | None = None) -> dict:
     meta = (package or {}).get("meta") or {}
     if not isinstance(meta, dict):
         meta = {}
+    library = meta.get("library")
+    if not isinstance(library, dict):
+        library = {}
 
     paper = tokens["paper"]
     subject = tokens["subject"]
@@ -289,6 +320,22 @@ def classify(path: Path, html: str, sidecar: dict | None = None) -> dict:
 
     package_class = _package_class(meta)
     package_title = meta.get("title") if isinstance(meta.get("title"), str) else ""
+
+    # What an earlier build recorded fills the gaps the file name leaves.
+    if not paper and library.get("paper"):
+        paper = str(library["paper"])
+    if not subject and library.get("subject"):
+        subject = str(library["subject"])
+    if klass is None and library.get("class") is not None:
+        try:
+            klass = int(library["class"])
+        except (TypeError, ValueError):
+            klass = None
+    if not lesson and library.get("lesson"):
+        lesson = str(library["lesson"])
+    if not mock_label and library.get("mock"):
+        mock_label = str(library["mock"])
+
     if not lesson and package_title:
         lesson = package_title
         if source == "filename" and not any((paper, subject, klass, mock_label)):
@@ -331,18 +378,22 @@ def classify(path: Path, html: str, sidecar: dict | None = None) -> dict:
     if not subject:
         subject = None
 
+    # A title a previous build settled on is kept, so that rebuilding never
+    # renames a paper or orphans the session saved under it.
+    derived = compose_title(
+        lesson, mock_label, package_title or humanise_slug(stem)
+    )
+    stored = library.get("title")
+    title_locked = (
+        isinstance(stored, str)
+        and bool(stored)
+        and library.get("lesson") == lesson
+        and library.get("mock") == mock_label
+    )
+    title = stored if title_locked else derived
     if sidecar and _sidecar_value(sidecar, "title"):
         title = str(_sidecar_value(sidecar, "title"))
-    elif lesson and mock_label:
-        title = f"{lesson} · {mock_label}"
-    elif lesson:
-        title = lesson
-    elif mock_label:
-        title = mock_label
-    elif package_title:
-        title = package_title
-    else:
-        title = humanise_slug(stem)
+        title_locked = True
 
     unclassified = not any((paper, subject, klass, lesson))
     if unclassified:
@@ -356,6 +407,7 @@ def classify(path: Path, html: str, sidecar: dict | None = None) -> dict:
         "lesson": lesson or None,
         "mock_label": mock_label,
         "title": title,
+        "title_locked": title_locked,
         "questions": (package or {}).get("question_count", 0),
         "status": meta.get("status") if isinstance(meta.get("status"), str) else "",
         "source": source,

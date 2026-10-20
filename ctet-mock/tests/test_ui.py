@@ -59,7 +59,8 @@ def free_port() -> int:
 class SiteFixture:
     """A built copy of the site, served over http for the browser tests."""
 
-    def __init__(self):
+    def __init__(self, fail_paths=None):
+        self.fail_paths = set(fail_paths or ())
         self.root = Path(tempfile.mkdtemp())
         self.public = self.root / "public"
         self.public.mkdir(parents=True)
@@ -75,9 +76,16 @@ class SiteFixture:
             write_fixture_mock(mocks, name, title, stem=stem)
         self.exit_code = build_mod.build(self.public, quiet=True)
         self.port = free_port()
-        handler = functools.partial(
-            http.server.SimpleHTTPRequestHandler, directory=str(self.public)
-        )
+        fixture = self
+
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def do_GET(self):
+                if self.path in fixture.fail_paths:
+                    self.send_error(500, "paper unavailable")
+                    return
+                super().do_GET()
+
+        handler = functools.partial(Handler, directory=str(self.public))
         self.server = http.server.ThreadingHTTPServer(("127.0.0.1", self.port), handler)
         self.server.daemon_threads = True
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -86,6 +94,22 @@ class SiteFixture:
     @property
     def base(self) -> str:
         return f"http://127.0.0.1:{self.port}"
+
+    def publish_new_version(self):
+        """Change the worker so the browser sees an update waiting to apply."""
+        import os
+        import time
+
+        worker = self.public / "sw.js"
+        worker.write_text(
+            worker.read_text(encoding="utf-8").replace(
+                'const VERSION = "', 'const VERSION = "new-', 1
+            ),
+            encoding="utf-8",
+        )
+        # The server answers 304 when the file's timestamp has not moved on.
+        stamp = time.time() + 2
+        os.utime(worker, (stamp, stamp))
 
     def close(self):
         self.server.shutdown()
@@ -127,7 +151,8 @@ class BrowserTestCase(unittest.TestCase):
     def wait_for_offline_ready(self, page):
         page.wait_for_function(
             "() => { const chip = document.getElementById('statusChip');"
-            " return chip && chip.textContent.indexOf('ready offline') >= 0; }",
+            " return chip && chip.textContent.toLowerCase()"
+            ".indexOf('ready offline') >= 0; }",
             timeout=60000,
         )
 
@@ -218,12 +243,21 @@ class TestLandingInBrowser(BrowserTestCase):
     def test_shows_the_saved_progress_of_a_mock(self):
         page = self.open_landing()
         try:
-            page.evaluate(
-                """() => {
-                  const key = 'quiz_session_v2_Natural_Resources_Mock_1';
-                  localStorage.setItem(key, JSON.stringify({answers: {'Q-0001': 'A'}}));
+            session_key = page.evaluate(
+                """async () => {
+                  const catalog = await (await fetch('catalog.json')).json();
+                  const mock = catalog.mocks.filter(m => m.lesson === 'Natural Resources')[0];
+                  return mock.sessionKey;
                 }"""
             )
+            page.evaluate(
+                """(key) => {
+                  localStorage.setItem(key, JSON.stringify({answers: {'Q-0001': 'A'}}));
+                }""",
+                session_key,
+            )
+            page.reload()
+            page.wait_for_selector(".view-papers")
             page.fill("#searchInput", "Natural Resources")
             page.wait_for_selector(".view-all")
             self.assertIn("In progress", page.inner_text(".view-all"))
@@ -294,6 +328,71 @@ class TestOfflineInBrowser(BrowserTestCase):
             context.set_offline(False)
             page.close()
             context.close()
+
+
+class TestOfflineReporting(unittest.TestCase):
+    """A paper that cannot be cached must be named, not hidden."""
+
+    def setUp(self):
+        self.site = SiteFixture(fail_paths={"/mocks/p2-sci-c8-light-m01.html"})
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch()
+        self.context = self.browser.new_context()
+        self.page = self.context.new_page()
+
+    def tearDown(self):
+        self.context.close()
+        self.browser.close()
+        self.playwright.stop()
+        self.site.close()
+
+    def test_the_app_does_not_claim_to_be_ready_when_a_paper_is_missing(self):
+        page = self.page
+        page.goto(f"{self.site.base}/index.html")
+        page.wait_for_selector(".view-papers")
+        page.wait_for_function(
+            "() => { const chip = document.getElementById('statusChip');"
+            " return chip && chip.textContent.indexOf('unavailable') >= 0; }",
+            timeout=60000,
+        )
+        chip = page.inner_text("#statusChip")
+        self.assertNotIn("ready offline", chip.lower())
+        banner = page.inner_text("#offlineBanner")
+        self.assertIn("light", banner.lower())
+
+    def test_a_paper_missing_offline_shows_the_error_panel(self):
+        page = self.page
+        page.goto(f"{self.site.base}/index.html")
+        page.wait_for_selector(".view-papers")
+        page.wait_for_timeout(6000)
+        self.context.set_offline(True)
+        try:
+            page.goto(f"{self.site.base}/player.html?m=paper-2__subject-science__class-class-8__lesson-light__mock-mock-1")
+            page.wait_for_selector("#playerError", state="visible", timeout=20000)
+        finally:
+            self.context.set_offline(False)
+
+
+@unittest.skipUnless(HAVE_PLAYWRIGHT, "playwright is not installed")
+class TestUpdateInBrowser(BrowserTestCase):
+    def test_a_new_library_reaches_the_device(self):
+        page = self.open_landing()
+        try:
+            self.wait_for_offline_ready(page)
+            self.site.publish_new_version()
+            page.reload()
+            page.wait_for_selector(".view-papers")
+            page.wait_for_selector("#updateBanner", state="visible", timeout=30000)
+            page.click("#updateBtn")
+            page.wait_for_function(
+                """async () => {
+                  const names = await caches.keys();
+                  return names.some(n => n.indexOf('new-') >= 0);
+                }""",
+                timeout=30000,
+            )
+        finally:
+            page.close()
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -17,13 +18,26 @@ from . import sw as sw_mod
 MOCKS_DIRNAME = "mocks"
 CATALOG_NAME = "catalog.json"
 WORKER_NAME = "sw.js"
+SIDECAR_SUFFIX = ".meta.json"
+
+# A mock file name ends up in a URL and in the generated worker, so it stays
+# to letters, digits, dots, dashes and underscores.
+SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
 def _read(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="replace")
+    """Read a file without touching its line endings."""
+    with open(path, "r", encoding="utf-8", errors="replace", newline="") as handle:
+        return handle.read()
 
 
-def _table(rows: list[dict], unclassified: list[dict]) -> None:
+def _write(path: Path, text: str) -> None:
+    """Write a file without touching its line endings."""
+    with open(path, "w", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+
+
+def _table(rows: list[dict], problems: list[dict]) -> None:
     headers = ("paper", "subject", "class", "lesson", "mock", "questions", "source")
     widths = {key: len(key) for key in headers}
     for row in rows:
@@ -38,11 +52,48 @@ def _table(rows: list[dict], unclassified: list[dict]) -> None:
             value = str(row.get(key, "") or "")
             cells.append(value.ljust(widths[key]))
         print("  ".join(cells))
-    for row in unclassified:
-        print(f"INCOMPLETE    {row['name']}")
-        print("             rename it to "
-              "<paper>-<subject>-<class>-<lesson>-<mock>.html "
-              "or add a .meta.json sidecar")
+    for problem in problems:
+        print(f"PROBLEM       {problem['name']}")
+        print(f"             {problem['reason']}")
+
+
+def _escalate(record: dict, level: int) -> str:
+    """A more specific title, used when two papers would share a session."""
+    label = record.get("mock_label") or ""
+    lesson = record.get("lesson") or ""
+    klass = record.get("klass")
+    paper = record.get("paper") or ""
+    if level <= 1:
+        parts = [label, f"Class {klass}" if klass is not None else "", lesson]
+    elif level <= 2:
+        parts = [paper, f"Class {klass}" if klass is not None else "", label, lesson]
+    else:
+        parts = [paper, f"Class {klass}" if klass is not None else "", label, lesson,
+                 Path(record.get("name") or "").stem]
+    return " · ".join(part for part in parts if part)
+
+
+def resolve_titles(records: list[dict]) -> None:
+    """Give every mock a title whose saved session is its own.
+
+    A title a previous build settled on is never changed, so adding a paper
+    cannot rename an existing one or orphan the session saved under it.
+    """
+    used: dict[str, dict] = {}
+    ordered = sorted(records, key=lambda r: (not r.get("title_locked"),
+                                             r.get("name") or ""))
+    for record in ordered:
+        title = record.get("title") or ""
+        key = catalog_mod.session_key(title)
+        if key in used:
+            level = 1
+            while key in used and level < 6:
+                title = _escalate(record, level)
+                key = catalog_mod.session_key(title)
+                level += 1
+        record["title"] = title
+        record["sessionKey"] = key
+        used[key] = record
 
 
 def build(public_dir: Path, mocks_dir: Path | None = None, retitle: bool = True,
@@ -54,40 +105,72 @@ def build(public_dir: Path, mocks_dir: Path | None = None, retitle: bool = True,
     mocks_dir = Path(mocks_dir)
     mocks_dir.mkdir(parents=True, exist_ok=True)
 
+    problems: list[dict] = []
     mock_files = sorted(mocks_dir.glob("*.html"))
+    known = {path.name for path in mock_files}
+    for path in sorted(mocks_dir.iterdir()):
+        if not path.is_file():
+            continue
+        if path.name in known or path.name.endswith(SIDECAR_SUFFIX):
+            continue
+        problems.append({
+            "name": path.name,
+            "reason": "not a mock document (expected a .html file)",
+        })
+
     records = []
-    actual_titles: dict[str, str] = {}
     for path in mock_files:
+        if not SAFE_NAME.match(path.name) or path.name.startswith("."):
+            problems.append({
+                "name": path.name,
+                "reason": "the file name may only use letters, digits, dots, "
+                          "dashes and underscores",
+            })
+            continue
         html = _read(path)
         record = intake.classify(path, html, intake.load_sidecar(path))
+        if not record.get("questions"):
+            problems.append({
+                "name": path.name,
+                "reason": "the document carries no questions (is it a "
+                          "generated mock?)",
+            })
+        if not retitle:
+            # The mock keeps its own title, so the catalogue and the saved
+            # session must use that title too.
+            package = intake.read_package(html) or {}
+            meta = package.get("meta") or {}
+            if isinstance(meta, dict) and isinstance(meta.get("title"), str):
+                record["title"] = meta["title"]
+                record["title_locked"] = True
         records.append(record)
-        package = intake.read_package(html) or {}
-        meta = package.get("meta") or {}
-        if isinstance(meta, dict) and isinstance(meta.get("title"), str):
-            actual_titles[path.name] = meta["title"]
 
+    resolve_titles(records)
     built = catalog_mod.build_catalog(records, version="")
 
-    # Give every mock the title the catalogue shows, so no two mocks of the
-    # same lesson share one saved session.
-    title_by_file = {}
-    for mock in built["mocks"]:
-        title_by_file[Path(mock["file"]).name] = mock["title"]
+    # Write the settled title and the classification back into the mock, so a
+    # later build reads the same thing instead of guessing again.
     if retitle:
-        for path in mock_files:
-            new_title = title_by_file.get(path.name)
-            if not new_title:
-                continue
+        for record in records:
+            path = mocks_dir / record["name"]
             html = _read(path)
-            updated = intake.rewrite_package_title(html, new_title)
+            library = {
+                "title": record["title"],
+                "paper": record["paper"],
+                "subject": record["subject"],
+                "class": record["klass"],
+                "lesson": record["lesson"],
+                "mock": record["mock_label"],
+            }
+            updated = intake.rewrite_package_title(html, record["title"], library)
             if updated != html:
-                path.write_text(updated, encoding="utf-8")
-            actual_titles[path.name] = new_title
+                _write(path, updated)
 
     for mock in built["mocks"]:
         name = Path(mock["file"]).name
-        effective = actual_titles.get(name, mock["title"])
-        mock["sessionKey"] = catalog_mod.session_key(effective)
+        record = next((r for r in records if r["name"] == name), None)
+        if record and record.get("sessionKey"):
+            mock["sessionKey"] = record["sessionKey"]
 
     # The version covers the shell, the mocks and the catalogue body, so a
     # changed paper or a changed library always reaches the phone.
@@ -101,14 +184,14 @@ def build(public_dir: Path, mocks_dir: Path | None = None, retitle: bool = True,
     hashable = {key: value for key, value in built.items()
                 if key not in ("version", "cacheName")}
     entries.append((CATALOG_NAME,
-                    json.dumps(hashable, sort_keys=True, ensure_ascii=False).encode("utf-8")))
+                    json.dumps(hashable, sort_keys=True,
+                               ensure_ascii=False).encode("utf-8")))
     version = sw_mod.compute_version(entries)
     built["version"] = version
     built["cacheName"] = sw_mod.cache_name(version)
 
-    (public_dir / CATALOG_NAME).write_text(
-        json.dumps(built, ensure_ascii=False, indent=1), encoding="utf-8"
-    )
+    _write(public_dir / CATALOG_NAME,
+           json.dumps(built, ensure_ascii=False, indent=1))
 
     precache = ["./"]
     for name in sw_mod.SHELL_FILES:
@@ -117,9 +200,8 @@ def build(public_dir: Path, mocks_dir: Path | None = None, retitle: bool = True,
     precache.append(CATALOG_NAME)
     for path in mock_files:
         precache.append(f"{MOCKS_DIRNAME}/{path.name}")
-    (public_dir / WORKER_NAME).write_text(
-        sw_mod.render_service_worker(version, precache), encoding="utf-8"
-    )
+    _write(public_dir / WORKER_NAME,
+           sw_mod.render_service_worker(version, precache))
 
     rows = []
     incomplete = []
@@ -137,7 +219,7 @@ def build(public_dir: Path, mocks_dir: Path | None = None, retitle: bool = True,
             incomplete.append(record)
         rows.append(row)
     if not quiet:
-        _table(rows, incomplete)
+        _table(rows, problems)
         print(f"\n{built['counts']['mocks']} mock(s) - version {version} - "
               f"{len(precache)} files cached offline")
         missing = [name for name in sw_mod.SHELL_FILES
@@ -145,9 +227,11 @@ def build(public_dir: Path, mocks_dir: Path | None = None, retitle: bool = True,
         for name in missing:
             print(f"note: shell file not found yet: {name}")
 
-    if incomplete and not allow_unclassified:
-        print("\nERROR: some mocks could not be classified. "
-              "Rename them or add a .meta.json sidecar.", file=sys.stderr)
+    failed = bool(incomplete) or bool(problems)
+    if failed and not allow_unclassified:
+        print("\nERROR: some mocks could not be published. "
+              "Rename them, add a .meta.json sidecar, or pass "
+              "--allow-unclassified.", file=sys.stderr)
         return 1
     return 0
 
@@ -165,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-retitle", action="store_true",
                         help="Do not rewrite the title inside the mock documents")
     parser.add_argument("--allow-unclassified", action="store_true",
-                        help="Do not fail when a mock cannot be classified")
+                        help="Do not fail when a mock cannot be published")
     parser.add_argument("--quiet", action="store_true",
                         help="Only report errors")
     args = parser.parse_args(argv)

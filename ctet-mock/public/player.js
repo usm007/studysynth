@@ -20,6 +20,15 @@
     return match ? decodeURIComponent(match[1]) : "";
   }
 
+  function frameHasContent() {
+    try {
+      var doc = frame.contentDocument;
+      return !!(doc && doc.body && doc.body.childElementCount > 0);
+    } catch (error) {
+      return false;
+    }
+  }
+
   function showError() {
     if (!errorEl) return;
     errorEl.hidden = false;
@@ -55,15 +64,18 @@
 
         if (timer) window.clearTimeout(timer);
         timer = window.setTimeout(function () {
-          if (!frame.contentDocument || !frame.contentDocument.body ||
-            !frame.contentDocument.body.childNodes.length) {
-            showError();
-          }
+          if (!frameHasContent()) showError();
         }, LOAD_TIMEOUT);
 
+        // The load event also fires when the paper could not be opened, so
+        // the content is checked rather than the event alone.
         frame.addEventListener("load", function () {
-          if (timer) window.clearTimeout(timer);
-          hideError();
+          if (frameHasContent()) {
+            if (timer) window.clearTimeout(timer);
+            hideError();
+          } else {
+            showError();
+          }
         }, { once: true });
 
         frame.src = found.file;

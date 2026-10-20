@@ -174,7 +174,9 @@ class TestClassify(unittest.TestCase):
     def test_title_combines_lesson_and_mock_label(self):
         html = make_html({"title": "Natural Resources"}, [])
         record = intake.classify(Path("p2-social-c8-natural-resources-m01.html"), html)
-        self.assertEqual(record["title"], "Natural Resources · Mock 1")
+        # The label comes first: the saved session key is only the first
+        # forty characters of the title, so the label has to be inside them.
+        self.assertEqual(record["title"], "Mock 1 · Natural Resources")
 
 
 if __name__ == "__main__":

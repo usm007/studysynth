@@ -1,5 +1,5 @@
 {
- "version": "3d87d9678127",
+ "version": "74434ff9a6c0",
  "counts": {
   "papers": 1,
   "subjects": 1,
@@ -28,11 +28,11 @@
           {
            "id": "paper-2__subject-social-science__class-class-8__lesson-natural-resources__mock-mock-1",
            "name": "Mock 1",
-           "title": "Natural Resources · Mock 1",
+           "title": "Mock 1 · Natural Resources",
            "file": "mocks/p2-social-c8-natural-resources-m01.html",
            "questions": 24,
            "status": "CURATED",
-           "sessionKey": "quiz_session_v2_Natural_Resources_Mock_1",
+           "sessionKey": "quiz_session_v2_Mock_1_Natural_Resources",
            "paperId": "paper-2",
            "subjectId": "paper-2__subject-social-science",
            "classId": "paper-2__subject-social-science__class-class-8",
@@ -56,11 +56,11 @@
   {
    "id": "paper-2__subject-social-science__class-class-8__lesson-natural-resources__mock-mock-1",
    "name": "Mock 1",
-   "title": "Natural Resources · Mock 1",
+   "title": "Mock 1 · Natural Resources",
    "file": "mocks/p2-social-c8-natural-resources-m01.html",
    "questions": 24,
    "status": "CURATED",
-   "sessionKey": "quiz_session_v2_Natural_Resources_Mock_1",
+   "sessionKey": "quiz_session_v2_Mock_1_Natural_Resources",
    "paperId": "paper-2",
    "subjectId": "paper-2__subject-social-science",
    "classId": "paper-2__subject-social-science__class-class-8",
@@ -72,5 +72,5 @@
    "mockLabel": "Mock 1"
   }
  ],
- "cacheName": "ctet-mock-3d87d9678127"
+ "cacheName": "ctet-mock-74434ff9a6c0"
 }

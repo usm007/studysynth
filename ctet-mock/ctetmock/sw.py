@@ -7,8 +7,10 @@ with the network off.
 from __future__ import annotations
 
 import hashlib
+import json
 
 CACHE_PREFIX = "ctet-mock-"
+MOCKS_PATH = "mocks"
 
 # The static shell, relative to the service worker. Files that do not exist
 # yet are skipped by the build and reported.
@@ -34,14 +36,20 @@ const PRECACHE = [
 {precache}
 ];
 
+// Assets that could not be cached, so the app can tell the learner which
+// paper is not on the device.
+let FAILED = [];
+
 self.addEventListener("install", (event) => {{
   event.waitUntil((async () => {{
     const cache = await caches.open(CACHE_NAME);
     // One unreachable file must not cancel the whole offline library.
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       PRECACHE.map((url) => cache.add(new Request(url, {{ cache: "reload" }})))
     );
-    await self.skipWaiting();
+    FAILED = PRECACHE.filter((url, index) => results[index].status === "rejected");
+    // The worker waits here: the page decides when to switch over, so the
+    // "refresh" button in the app really refreshes.
   }})());
 }});
 
@@ -70,7 +78,11 @@ self.addEventListener("message", (event) => {{
     event.waitUntil((async () => {{
       const cache = await caches.open(CACHE_NAME);
       const keys = await cache.keys();
-      event.ports[0].postMessage({{ cached: keys.length, expected: PRECACHE.length }});
+      event.ports[0].postMessage({{
+        cached: keys.length,
+        expected: PRECACHE.length,
+        failed: FAILED
+      }});
     }})());
   }}
 }});
@@ -86,7 +98,10 @@ async function respond(request, url) {{
     }}
     return response;
   }} catch (error) {{
-    if (request.mode === "navigate") {{
+    // A paper that is not cached must fail, not show the library in its
+    // place: the player needs to know it could not open the paper.
+    const isPaper = url.pathname.indexOf("/{mocks_path}/") >= 0;
+    if (request.mode === "navigate" && !isPaper) {{
       const shell = await cache.match("index.html");
       if (shell) return shell;
     }}
@@ -113,9 +128,10 @@ def cache_name(version: str) -> str:
 
 def render_service_worker(version: str, precache: list[str]) -> str:
     """Render the worker source for a given version and asset list."""
-    lines = "\n".join(f'  "{url}",' for url in precache)
+    lines = "\n".join(f"  {json.dumps(url)}," for url in precache)
     return SERVICE_WORKER_TEMPLATE.format(
         version=version,
         cache_name=cache_name(version),
         precache=lines,
+        mocks_path=MOCKS_PATH,
     )

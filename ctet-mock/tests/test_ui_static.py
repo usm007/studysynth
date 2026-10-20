@@ -5,6 +5,7 @@ Run: python -m pytest ctet-mock/tests/test_ui_static.py -v
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import unittest
@@ -103,6 +104,15 @@ class TestLandingPage(unittest.TestCase):
     def test_touch_targets_are_large_enough(self):
         collapsed = "".join(self.css.split())
         self.assertIn("min-height:44px", collapsed)
+        for value in re.findall(r"min-height:(\d+)px", self.css):
+            self.assertGreaterEqual(int(value), 44,
+                                    "a control is smaller than 44px")
+
+    def test_the_player_reserves_the_home_indicator_space(self):
+        collapsed = "".join(self.css.split())
+        self.assertIn("#playerFrame{", collapsed)
+        frame_rule = collapsed.split("#playerFrame{")[1].split("}")[0]
+        self.assertIn("env(safe-area-inset-bottom)", frame_rule)
 
     def test_hidden_elements_stay_hidden(self):
         """A class with its own display rule must not defeat [hidden]."""
