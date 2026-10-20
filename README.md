@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/banner.jpg" alt="StudySynth — Create. Study. Test. Excel. A Smart Learning &amp; Assessment Skill." width="100%">
+</p>
+
 # StudySynth — Local-First Study Application & Revision Engine
 
 StudySynth converts complex reference and study documents into interactive, standalone HTML study modules, master study libraries, and print-ready A4 PDF test papers (for UPSC, APSC, State PSC, SSC, Banking, Railways, Teaching, and other competitive objective examinations).
@@ -38,7 +42,7 @@ The ingestion engine (`scripts/ingest.py`) parses, normalizes, and extracts stru
 
 ### Interactive Study Desk UI
 - Pure standalone offline HTML file (`file://` compatible).
-- Features **Practice Deck**, **Test**, **Revision Engine**, **Analytics** modes plus a sidebar **Confidence** meter.
+- Features **Practice Deck**, **Test**, **Revision Engine**, and **Analytics** modes.
 - Purged of generic "Quiz" terminology in favor of pedagogical study module workflows.
 
 ---

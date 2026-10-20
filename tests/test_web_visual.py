@@ -286,10 +286,14 @@ class TestOfflineBuild(unittest.TestCase):
     def test_functionality_preserved(self):
         t = tpl_text()
         for eid in ["opts", "submitbtn", "markbtn", "prevbtn", "nextbtn",
-                    "confrow", "feedback", "hintbtn", "navgrid",
+                    "feedback", "hintbtn", "navgrid",
                     "exportbtn", "importbtn", "importfile", "storagenote",
                     "analyticsBtn", "quizBtn", "srcmode", "printlink"]:
             self.assertIn('id="%s"' % eid, t, eid)
+        self.assertNotIn('id="confrow"', t)
+        self.assertNotIn("How sure are you?", t)
+        self.assertIn('class="brand-mark brand-mark--logo"', t)
+        self.assertIn("data:image/png;base64,", t)
         self.assertIn("quiz_session_v2_", t)
         self.assertIn("study_session.json", t)
 
