@@ -1,9 +1,9 @@
 ---
-name: doctoquiz
+name: StudySynth
 description: Use when turning reference documents, notes, chapters, or existing question banks into exam-ready multiple-choice sets for UPSC, APSC, State PSC, SSC, Banking, Railways, or Teaching exams; when a bank must be audited, repaired, or proven source-bound and quality-accepted; or when a verified package must be rendered as a standalone HTML quiz or print-ready A4 PDF papers.
 ---
 
-# DocToQuiz — operating instructions
+# StudySynth — operating instructions
 
 Version 1.0 · Python 3.9+.
 
