@@ -12635,8 +12635,10 @@
       display: none !important;
     }
 
+    /* The destination bar stays in test mode too: the exam head carries
+       Exit Test, the bottom bar keeps Practice / Study / Test / Progress. */
     body[data-mode="test"] .bottomnav {
-      display: none !important;
+      display: flex !important;
     }
 
     body[data-mode="test"] .shell {
@@ -14077,6 +14079,24 @@
       #finishtest {
         margin-left: 0;
       }
+
+      /* The timing sub-bar was 26px wider than a 390px phone. Let it wrap. */
+      .exam-sub-bar {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 4px 10px;
+        padding: 6px 10px;
+      }
+
+      .exam-timer-wrap {
+        flex-wrap: wrap;
+        gap: 2px 10px;
+      }
+
+      #testCounts {
+        margin-left: 0 !important;
+        flex-basis: 100%;
+      }
     }
 
     /* Phone/tablet CBT: the sheet flows with the page. The action row sits
@@ -14096,7 +14116,7 @@
 
       body[data-mode="test"] #quizview {
         display: block !important;
-        padding: 8px 12px 24px !important;
+        padding: 8px 12px calc(92px + env(safe-area-inset-bottom)) !important;
       }
 
       body[data-mode="test"] #qwork.study-layout {
@@ -14136,8 +14156,9 @@
         z-index: auto !important;
         flex-wrap: wrap !important;
         margin: 14px 0 0 !important;
-        border: 1px solid var(--line) !important;
-        border-radius: 8px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
         overflow-x: visible !important;
       }
 
