@@ -49,6 +49,10 @@ class TestCatalogShape(unittest.TestCase):
         names = [p["name"] for p in self.catalog["papers"]]
         self.assertEqual(names, ["Paper I", "Paper II"])
 
+    def test_paper_ids_are_readable(self):
+        self.assertEqual(self.catalog["papers"][0]["id"], "paper-1")
+        self.assertEqual(self.catalog["papers"][1]["id"], "paper-2")
+
     def test_subjects_follow_the_fixed_display_order(self):
         paper_two = self.catalog["papers"][1]
         names = [s["name"] for s in paper_two["subjects"]]

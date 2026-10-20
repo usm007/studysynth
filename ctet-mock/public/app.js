@@ -144,7 +144,7 @@
       '<div class="hero-stats">' +
       '<span class="stat-pill">' + catalog.papers.length + " papers</span>" +
       '<span class="stat-pill">' + total + " mock papers</span>" +
-      '<span class="stat-pill">Ready offline</span>" +
+      '<span class="stat-pill">Ready offline</span>' +
       "</div></div>";
     if (total) {
       html += row("All mock papers", "Search and open any paper", total, "all", "");
@@ -312,19 +312,22 @@
 
   /* ------------------------------------------------------------ navigation */
 
+  var LEVELS = { papers: 0, subjects: 1, classes: 2, lessons: 3, mocks: 4, all: 0 };
+
   function navigate(next) {
     next = next || {};
     if (next.view) state.view = next.view;
-    if ("paperId" in next) state.paperId = next.paperId;
-    if ("subjectId" in next) state.subjectId = next.subjectId;
-    if ("classId" in next) state.classId = next.classId;
-    if ("lessonId" in next) state.lessonId = next.lessonId;
-    if (next.reset) {
-      state.paperId = null;
-      state.subjectId = null;
-      state.classId = null;
-      state.lessonId = null;
-    }
+    var level = LEVELS[state.view] === undefined ? 0 : LEVELS[state.view];
+    // Drilling into a level drops everything below it, so a stale class or
+    // lesson from the previous branch can never leak into the new one.
+    if (level < 1) state.paperId = null;
+    if (level < 2) state.subjectId = null;
+    if (level < 3) state.classId = null;
+    if (level < 4) state.lessonId = null;
+    if (next.paperId !== undefined) state.paperId = next.paperId;
+    if (next.subjectId !== undefined) state.subjectId = next.subjectId;
+    if (next.classId !== undefined) state.classId = next.classId;
+    if (next.lessonId !== undefined) state.lessonId = next.lessonId;
     render();
     window.scrollTo(0, 0);
   }
@@ -334,9 +337,9 @@
     if (!trigger) return;
     var go = trigger.getAttribute("data-go");
     var id = trigger.getAttribute("data-id") || "";
-    if (go === "home") navigate({ view: "papers", reset: true });
-    else if (go === "all") navigate({ view: "all", reset: true });
-    else if (go === "paper") navigate({ view: "subjects", paperId: id, reset: true });
+    if (go === "home") navigate({ view: "papers" });
+    else if (go === "all") navigate({ view: "all" });
+    else if (go === "paper") navigate({ view: "subjects", paperId: id });
     else if (go === "subject") navigate({ view: "classes", subjectId: id });
     else if (go === "class") navigate({ view: "lessons", classId: id });
     else if (go === "lesson") navigate({ view: "mocks", lessonId: id });
@@ -509,7 +512,7 @@
   viewEl.addEventListener("click", onViewClick);
   $("crumbs").addEventListener("click", onViewClick);
   $("btnHome").addEventListener("click", function () {
-    navigate({ view: "papers", reset: true });
+    navigate({ view: "papers" });
   });
   $("searchInput").addEventListener("input", function (event) {
     state.query = event.target.value || "";

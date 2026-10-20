@@ -5,6 +5,8 @@ Run: python -m pytest ctet-mock/tests/test_ui_static.py -v
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -102,6 +104,11 @@ class TestLandingPage(unittest.TestCase):
         collapsed = "".join(self.css.split())
         self.assertIn("min-height:44px", collapsed)
 
+    def test_hidden_elements_stay_hidden(self):
+        """A class with its own display rule must not defeat [hidden]."""
+        collapsed = "".join(self.css.split())
+        self.assertIn("[hidden]{display:none!important", collapsed)
+
     def test_offline_banner_reports_real_cache_progress(self):
         source = self.html + self.js
         self.assertIn("offlineBanner", source)
@@ -141,6 +148,23 @@ class TestPlayerPage(unittest.TestCase):
             text = read(path)
             self.assertNotIn("http://", text)
             self.assertNotIn("https://", text)
+
+
+class TestJavaScriptSyntax(unittest.TestCase):
+    """A typo in a script must fail fast, not at runtime on a phone."""
+
+    def test_scripts_parse(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node is not installed")
+        for name in ("app.js", "player.js"):
+            with self.subTest(script=name):
+                result = subprocess.run(
+                    [node, "--check", str(PUBLIC / name)],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0,
+                                 f"{name} does not parse:\n{result.stderr}")
 
 
 if __name__ == "__main__":

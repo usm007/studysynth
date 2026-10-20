@@ -17,6 +17,17 @@ from .intake import (
 
 UNCLASSIFIED = "Unclassified"
 
+PAPER_IDS = {
+    PAPER_I: "paper-1",
+    PAPER_II: "paper-2",
+    UNCLASSIFIED: "paper-unclassified",
+}
+
+
+def paper_id(name: str) -> str:
+    """A short, readable id for a paper."""
+    return PAPER_IDS.get(name, f"paper-{slug(name)}")
+
 
 def slug(text: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "-", (text or "").lower())
@@ -129,7 +140,7 @@ def build_catalog(records: list[dict], version: str = "0" * 12) -> dict:
         paper = paper_index.get(paper_name)
         if paper is None:
             paper = {
-                "id": unique_id(f"paper-{slug(paper_name)}"),
+                "id": unique_id(paper_id(paper_name)),
                 "name": paper_name,
                 "classRange": PAPER_CLASS_RANGE.get(paper_name, ""),
                 "subjects": [],

@@ -1,0 +1,273 @@
+"""CTET Mock PWA — browser and offline checks.
+
+These run a real Chromium against the built site: the drill-down, the search,
+the player, and the library with the network switched off.
+
+Run: python -m pytest ctet-mock/tests/test_ui.py -v
+"""
+from __future__ import annotations
+
+import functools
+import http.server
+import shutil
+import socket
+import sys
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
+
+from ctetmock import build as build_mod  # noqa: E402
+
+FIXTURES = ROOT / "tests" / "fixtures"
+sys.path.insert(0, str(FIXTURES))
+from make_fixture_mock import write_fixture_mock  # noqa: E402
+
+try:
+    from playwright.sync_api import sync_playwright
+
+    HAVE_PLAYWRIGHT = True
+except ImportError:  # pragma: no cover - environment without playwright
+    HAVE_PLAYWRIGHT = False
+
+
+SHELL = [
+    "index.html", "app.css", "app.js", "player.html", "player.js",
+    "manifest.webmanifest",
+    "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png",
+    "icons/apple-touch-icon.png", "icons/favicon.png",
+]
+
+FIXTURE_MOCKS = [
+    ("p1-evs-c4-plants-m01.html", "Plants", "Which part of the plant makes food?"),
+    ("p2-social-c8-natural-resources-m01.html", "Natural Resources",
+     "How do people use natural resources?"),
+    ("p2-sci-c8-light-m01.html", "Light", "Which property of light travels in a straight line?"),
+]
+
+
+def free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+class SiteFixture:
+    """A built copy of the site, served over http for the browser tests."""
+
+    def __init__(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.public = self.root / "public"
+        self.public.mkdir(parents=True)
+        for name in SHELL:
+            source = ROOT / "public" / name
+            if source.is_file():
+                target = self.public / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+        mocks = self.public / "mocks"
+        mocks.mkdir(parents=True, exist_ok=True)
+        for name, title, stem in FIXTURE_MOCKS:
+            write_fixture_mock(mocks, name, title, stem=stem)
+        self.exit_code = build_mod.build(self.public, quiet=True)
+        self.port = free_port()
+        handler = functools.partial(
+            http.server.SimpleHTTPRequestHandler, directory=str(self.public)
+        )
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", self.port), handler)
+        self.server.daemon_threads = True
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    @property
+    def base(self) -> str:
+        return f"http://127.0.0.1:{self.port}"
+
+    def close(self):
+        self.server.shutdown()
+        self.server.server_close()
+        shutil.rmtree(self.root, ignore_errors=True)
+
+
+@unittest.skipUnless(HAVE_PLAYWRIGHT, "playwright is not installed")
+class BrowserTestCase(unittest.TestCase):
+    site: SiteFixture
+    playwright = None
+    browser = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.site = SiteFixture()
+        cls.playwright = sync_playwright().start()
+        try:
+            cls.browser = cls.playwright.chromium.launch()
+        except Exception as error:  # pragma: no cover - no browser binary
+            cls.playwright.stop()
+            cls.site.close()
+            raise unittest.SkipTest(f"chromium is unavailable: {error}")
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.browser:
+            cls.browser.close()
+        if cls.playwright:
+            cls.playwright.stop()
+        cls.site.close()
+
+    def open_landing(self, context=None):
+        page = (context or self.browser).new_page()
+        page.goto(f"{self.site.base}/index.html")
+        page.wait_for_selector(".view-papers")
+        return page
+
+    def wait_for_offline_ready(self, page):
+        page.wait_for_function(
+            "() => { const chip = document.getElementById('statusChip');"
+            " return chip && chip.textContent.indexOf('ready offline') >= 0; }",
+            timeout=60000,
+        )
+
+
+class TestLandingInBrowser(BrowserTestCase):
+    def test_lists_the_papers(self):
+        page = self.open_landing()
+        try:
+            text = page.inner_text(".view-papers")
+            self.assertIn("Paper I", text)
+            self.assertIn("Paper II", text)
+        finally:
+            page.close()
+
+    def test_drills_down_to_a_mock(self):
+        page = self.open_landing()
+        try:
+            page.click('[data-go="paper"][data-id="paper-2"]')
+            page.wait_for_selector(".view-subjects")
+            self.assertIn("Social Science", page.inner_text(".view-subjects"))
+
+            page.click('.view-subjects button:has-text("Social Science")')
+            page.wait_for_selector(".view-classes")
+            self.assertIn("Class 8", page.inner_text(".view-classes"))
+
+            page.click('.view-classes button:has-text("Class 8")')
+            page.wait_for_selector(".view-lessons")
+            self.assertIn("Natural Resources", page.inner_text(".view-lessons"))
+
+            page.click('.view-lessons button:has-text("Natural Resources")')
+            page.wait_for_selector(".view-mocks")
+            card = page.query_selector(".mock-card")
+            self.assertIsNotNone(card)
+            self.assertIn("player.html?m=", card.get_attribute("href"))
+            self.assertIn("Mock 1", page.inner_text(".view-mocks"))
+        finally:
+            page.close()
+
+    def test_breadcrumb_tracks_the_drill_down(self):
+        page = self.open_landing()
+        try:
+            page.click('[data-go="paper"][data-id="paper-2"]')
+            page.wait_for_selector(".view-subjects")
+            crumbs = page.inner_text("#crumbs")
+            self.assertIn("Library", crumbs)
+            self.assertIn("Paper II", crumbs)
+        finally:
+            page.close()
+
+    def test_search_filters_the_library(self):
+        page = self.open_landing()
+        try:
+            page.fill("#searchInput", "light")
+            page.wait_for_selector(".view-all")
+            titles = page.inner_text(".view-all")
+            self.assertIn("Light", titles)
+            self.assertNotIn("Natural Resources", titles)
+        finally:
+            page.close()
+
+    def test_shows_the_saved_progress_of_a_mock(self):
+        page = self.open_landing()
+        try:
+            page.evaluate(
+                """() => {
+                  const key = 'quiz_session_v2_Natural_Resources_Mock_1';
+                  localStorage.setItem(key, JSON.stringify({answers: {'Q-0001': 'A'}}));
+                }"""
+            )
+            page.fill("#searchInput", "Natural Resources")
+            page.wait_for_selector(".view-all")
+            self.assertIn("In progress", page.inner_text(".view-all"))
+        finally:
+            page.close()
+
+
+class TestPlayerInBrowser(BrowserTestCase):
+    def test_opens_the_paper_in_the_frame(self):
+        page = self.open_landing()
+        try:
+            page.fill("#searchInput", "light")
+            page.wait_for_selector(".view-all")
+            href = page.get_attribute(".mock-card", "href")
+            page.goto(f"{self.site.base}/{href}")
+            page.wait_for_selector("#playerFrame")
+            frame = page.frame_locator("#playerFrame")
+            frame.locator("#qstem").wait_for(timeout=15000)
+            self.assertIn(
+                "straight line",
+                frame.locator("#qstem").inner_text(),
+            )
+        finally:
+            page.close()
+
+    def test_the_frame_title_names_the_paper(self):
+        page = self.open_landing()
+        try:
+            page.fill("#searchInput", "light")
+            page.wait_for_selector(".view-all")
+            href = page.get_attribute(".mock-card", "href")
+            page.goto(f"{self.site.base}/{href}")
+            page.wait_for_function(
+                "() => { const t = document.getElementById('playerTitle');"
+                " return t && t.textContent.indexOf('Light') >= 0; }",
+                timeout=15000,
+            )
+        finally:
+            page.close()
+
+
+class TestOfflineInBrowser(BrowserTestCase):
+    def test_library_and_papers_work_with_the_network_off(self):
+        context = self.browser.new_context()
+        page = self.open_landing(context)
+        try:
+            self.wait_for_offline_ready(page)
+            context.set_offline(True)
+            page.reload()
+            page.wait_for_selector(".view-papers")
+            self.assertIn("Paper II", page.inner_text(".view-papers"))
+
+            page.click('[data-go="paper"][data-id="paper-2"]')
+            page.wait_for_selector(".view-subjects")
+            page.click('.view-subjects button:has-text("Social Science")')
+            page.wait_for_selector(".view-classes")
+            page.click('.view-classes button:has-text("Class 8")')
+            page.wait_for_selector(".view-lessons")
+            page.click('.view-lessons button:has-text("Natural Resources")')
+            page.wait_for_selector(".view-mocks")
+            href = page.get_attribute(".mock-card", "href")
+            page.goto(f"{self.site.base}/{href}")
+            page.wait_for_selector("#playerFrame")
+            frame = page.frame_locator("#playerFrame")
+            frame.locator("#qstem").wait_for(timeout=15000)
+            self.assertIn("natural resources", frame.locator("#qstem").inner_text())
+        finally:
+            context.set_offline(False)
+            page.close()
+            context.close()
+
+
+if __name__ == "__main__":
+    unittest.main()
