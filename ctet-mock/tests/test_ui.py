@@ -112,8 +112,11 @@ class SiteFixture:
         os.utime(worker, (stamp, stamp))
 
     def close(self):
-        self.server.shutdown()
-        self.server.server_close()
+        try:
+            self.server.shutdown()
+            self.server.server_close()
+        except OSError:
+            pass
         shutil.rmtree(self.root, ignore_errors=True)
 
 
