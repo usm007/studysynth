@@ -2,16 +2,36 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
+# Development-only material: kept locally, not shipped with the skill
+tests/
+build/
+.stitch/
+anti-slop/
+assets/banners/
+docs/
+scripts/release_gate.py
+DESIGN.md
+new_design_plan.md
+
 # Local source material
 NCERT/
-build/study-test/
-build/ui-verify/
-build/ctet-mock-shots/
 
-# Run artifacts and session-private working notes
-build/
+# Generated demo run artifacts (rebuilt by the verify dry run)
+examples/anchors.json
+examples/audit_report.json
+examples/coverage_matrix.json
+examples/dedupe_report.json
+examples/gate.json
+examples/quality_report.json
+examples/validation_results.json
+examples/pdf/
+examples/pdf_check_report.json
+examples/question_bank_apsc.json
+
+# Session-private working notes and side outputs
 output/
 .superpowers/
+examples/hees102*
 
 # CTET Mock - a separate side project with its own deployment.
 # It lives in this folder but is not part of the StudySynth repository.
