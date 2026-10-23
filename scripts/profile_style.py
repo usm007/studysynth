@@ -120,7 +120,8 @@ def _assessment_lines(style: dict) -> list[str]:
 def style_context(profile: dict, stage: str) -> str:
     """Return prompt-ready style rules for a profile and pipeline stage.
 
-    Stages: ``classify``, ``exam-design``, ``generate``.  Unknown stages and
+    Stages: ``classify`` / ``extract`` (same style context), ``generate``.
+    The legacy alias ``exam-design`` maps to ``extract``.  Unknown stages and
     profiles without ``question_style_profile`` return an empty string.
     """
     style = _style(profile)
@@ -129,7 +130,9 @@ def style_context(profile: dict, stage: str) -> str:
     identity = style.get("identity", {}) if isinstance(style.get("identity"), dict) else {}
     name = identity.get("label") or profile.get("name") or "Profile"
     stage = (stage or "").strip().lower()
-    if stage not in {"classify", "exam-design", "generate"}:
+    if stage == "exam-design":
+        stage = "extract"
+    if stage not in {"classify", "extract", "generate"}:
         return ""
 
     lines = [f"## {name} question-style profile", ""]
@@ -155,7 +158,7 @@ def style_context(profile: dict, stage: str) -> str:
         return "\n".join(lines).strip()
 
     archetypes = _profile_archetypes(style)
-    if stage == "exam-design":
+    if stage == "extract":
         lines.append("Archetype selection (record the chosen `archetype` on every blueprint row):")
         for aid in ARCHETYPE_ORDER:
             item = archetypes.get(aid)
@@ -383,7 +386,10 @@ def validate_question_style(question: dict, profile: dict, *, supplied_passage=N
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Print question-style prompt context for a profile.")
     ap.add_argument("--profile", required=True, help="Path to an exam profile JSON file")
-    ap.add_argument("--stage", required=True, choices=["classify", "exam-design", "generate"])
+    ap.add_argument("--stage", required=True,
+                    choices=["classify", "extract", "generate", "exam-design"],
+                    help="Style stage: classify/extract (same context; exam-design "
+                         "is the legacy alias) or generate")
     args = ap.parse_args(argv)
     try:
         text = build_prompt(args.profile, args.stage)

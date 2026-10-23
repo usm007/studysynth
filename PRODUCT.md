@@ -40,13 +40,16 @@ Comprehensive does not mean pretending that every possible fact in the universe 
 It means:
 1. identify the meaningful knowledge present in the source;
 2. classify its importance and examinability;
-3. determine the question forms required to test it;
-4. generate questions from that inventory;
+3. plan the question forms required to test it (deterministically, from the
+   inventory);
+4. generate questions from that plan;
 5. validate correctness and source fidelity;
 6. measure both content and cognitive coverage;
-7. identify gaps;
-8. generate targeted gap-fill questions;
-9. repeat the audit until the defined gate is satisfied or a limitation must be reported.
+7. identify gaps and failures honestly;
+8. run one targeted repair round for queued questions, and re-verify
+   everything that changed;
+9. report the status the evidence supports — never loop until a pass
+   appears.
 
 The system must be honest when the source itself is insufficient.
 
@@ -285,7 +288,7 @@ The statement engine must preserve a defensible truth value and make the alterat
 
 ---
 
-## 14. Coverage audit and gap filling
+## 14. Coverage audit and repair
 
 After generation, the system audits the bank.
 
@@ -298,15 +301,19 @@ The audit asks:
 - Are there redundancy/skew problems?
 - Are there important KUs that are only weakly tested?
 
-The gap-fill stage then generates **only what is missing**.
+Failures and gaps do not trigger a fill loop. They converge into one
+targeted repair round: the repair stage fixes or retires ONLY queued
+questions, everything repaired is re-validated, re-assessed for quality and
+blind-re-reviewed, and the audit then reads the final state.
 
-It should not simply generate more questions for already saturated areas.
+The flow is:
 
-The loop is:
+GENERATE → VALIDATE → REVIEW (blind, independent) → MEASURE → AUDIT →
+REPAIR (once) → MEASURE AGAIN
 
-GENERATE → VALIDATE → MEASURE → AUDIT → FILL GAPS → MEASURE AGAIN
-
-A final package is comprehensive only when the configured gate says so.
+A final package is comprehensive only when the configured gate says so with
+verified evidence — a single-pass workflow reports a clean run as honestly
+LIMITED rather than inflating scope certification.
 
 ---
 
@@ -319,7 +326,7 @@ The product must never infer completion from:
 - visual appearance
 - looks complete
 
-The authoritative status comes from the deterministic audit/gate pipeline.
+The authoritative status comes from the deterministic audit/gate pipeline, backed by verification evidence.
 
 Possible outcomes include:
 - **COMPREHENSIVE**
@@ -562,18 +569,21 @@ Examples:
 - extract meaning
 - atomize knowledge
 - judge importance
-- design exam purposes
+- suggest question forms (hints; the planner decides deterministically)
 - write questions
 - create meaningful distractors
 - explain reasoning
-- perform blind semantic review
-- identify conceptual gaps
+- perform blind review (single independent stream)
+- repair queued questions (one bounded round)
 
 ### Determinism belongs to scripts
 
 Examples:
 - ingestion
 - anchor extraction
+- chunking and batching
+- reconciliation, blueprint and count policy
+- batch assembly
 - schema checks
 - quote/provenance verification
 - option/key checks

@@ -397,7 +397,13 @@ class TestGapFillTargeting(unittest.TestCase):
         aud = jload(au)
         self.assertEqual(aud["uncovered_t1_t2"], [])
         self.assertEqual(aud["cognitive_gaps"], {})
-        self.assertEqual(gatemod.decide(aud, 1.0)[0], "COMPREHENSIVE")
+        # Full coverage reads clean, but scope certification still requires
+        # exhaustive second-pass evidence (honest LIMITED for a single pass).
+        status, reasons = gatemod.decide(aud, 1.0)
+        self.assertEqual(status, "LIMITED")
+        self.assertTrue(any("verification" in r for r in reasons))
+        ev = {"exhaustive_second_pass": True, "missing_reviews": False}
+        self.assertEqual(gatemod.decide(aud, 1.0, evidence=ev)[0], "COMPREHENSIVE")
 
 
 class TestDuplicates(unittest.TestCase):
@@ -659,11 +665,14 @@ class TestAcceptanceE2E(unittest.TestCase):
         r = run("scripts/run_longdoc_acceptance.py", "--fixtures", str(FIX),
                 "--run-dir", str(tmp / "r1"))
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("gate-final: COMPREHENSIVE", r.stdout)
+        # Honest single-workflow acceptance: a fully covered run is LIMITED,
+        # not a self-claimed COMPREHENSIVE.
+        self.assertIn("gate-final: LIMITED", r.stdout)
         self.assertIn("OVERALL: PASS", r.stdout)
         gate = jload(tmp / "r1" / "gate.json")
-        self.assertEqual(gate["status"], "COMPREHENSIVE")
-        self.assertEqual(gate["reasons"], [])
+        self.assertEqual(gate["status"], "LIMITED")
+        self.assertEqual(gate["verification_policy"], "single_pass_blind_review")
+        self.assertFalse(gate["evidence_verified"])
 
 
 if __name__ == "__main__":

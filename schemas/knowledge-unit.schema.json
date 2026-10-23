@@ -7,6 +7,36 @@
       },
       "type": "array"
     },
+    "question_hints": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "purpose": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string"
+          },
+          "primary_skill": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "archetype_hints": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
     "content_kind": {
       "enum": [
         "child_development",

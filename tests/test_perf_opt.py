@@ -74,10 +74,16 @@ class TestBatchConfig(unittest.TestCase):
         self.assertEqual(b["question_concurrency"], 4)
         self.assertEqual(b["review_concurrency"], 4)
         self.assertTrue(4000 <= b["extraction_chunk_tokens"] <= 6000)
-        self.assertTrue(6 <= b["question_batch_size"] <= 8)
-        self.assertTrue(4 <= b["review_batch_size"] <= 6)
+        # One batch size policy for the single FAST workflow (§A5): ~12 items
+        # per generation or review request; no per-mode variation.
+        self.assertEqual(b["question_batch_size"], 12)
+        self.assertEqual(b["review_batch_size"], 12)
         self.assertEqual(cfg["max_repair_retries"], 2)
-        self.assertEqual(cfg["max_gapfill_rounds"], 5)
+        # Old ideas retired by the refactor: no multi-round gap-fill loop and
+        # exactly one bounded repair round.
+        self.assertEqual(cfg["max_repair_rounds"], 1)
+        self.assertNotIn("max_gapfill_rounds", cfg)
+        self.assertNotIn("processing_mode", cfg)
 
 
 class TestMergeOrder(unittest.TestCase):
@@ -256,8 +262,9 @@ class TestCoverageEligibility(unittest.TestCase):
 
     def test_legacy_bank_grandfathered(self):
         # sample bank has no explicit purposes: coverage stays validation-only
-        # so the pre-existing COMPREHENSIVE package keeps passing, while the
-        # quality/dedupe reports are still produced for the audit.
+        # (no quality filtering), while the quality/dedupe reports are still
+        # produced for the audit. The single workflow never overclaims though:
+        # the gate is honestly PARTIAL/LIMITED, not COMPREHENSIVE.
         import subprocess
         tmp = Path(tempfile.mkdtemp(prefix="perflegacy_"))
         r = subprocess.run([PY, "scripts/pipeline.py", "--source", "examples/sample_source.md",
@@ -265,13 +272,13 @@ class TestCoverageEligibility(unittest.TestCase):
                             "--config", "config.default.json", "--build-dir", str(tmp),
                             "--inventory", "examples/sample_inventory.json",
                             "--bank", "examples/sample_bank.json",
-                            "--processing-mode", "COMPREHENSIVE",
                             "--ignored", str(ROOT / "tests/fixtures/e2e_ignored_anchors.json"),
                             "--diff", str(ROOT / "tests/fixtures/e2e_inventory_diff.json")],
                            capture_output=True, text=True, cwd=str(ROOT), timeout=300)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         gate = json.loads((tmp / "t1" / "gate.json").read_text(encoding="utf-8"))
-        self.assertEqual(gate["status"], "COMPREHENSIVE")
+        self.assertIn(gate["status"], ("PARTIAL", "LIMITED"))
+        self.assertEqual(gate["verification_policy"], "single_pass_blind_review")
         covd = json.loads((tmp / "t1" / "coverage_matrix.json").read_text(encoding="utf-8"))
         self.assertFalse(covd.get("quality_filtered"))
         self.assertTrue((tmp / "t1" / "quality_report.json").is_file())

@@ -104,7 +104,7 @@ def q_cognitive_forms(q):
 def required_forms(ku):
     """Exam-value-driven required cognitive forms for a KU. Not mechanical x4.
 
-    Rules (audited against PRODUCT.md section 9 and prompts/classify.md):
+    Rules (audited against PRODUCT.md section 9 and prompts/extract.md):
     - Tier 1 (critical) normally needs recall + statement; plus distinction
       when confusion risk is medium/high or confusable units exist, because a
       critical KU must be tested in multiple forms where supported.

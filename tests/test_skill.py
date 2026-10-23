@@ -230,9 +230,11 @@ def ref_compute_gaps(inventory, bank):
 
 def ref_audit(inventory, bank):
     gaps = ref_compute_gaps(inventory, bank)
+    # Single FAST workflow vocabulary: a gap-free audit is honestly LIMITED
+    # (scope never certified without exhaustive sweep evidence); gaps stay PARTIAL.
     return {"coverage": ref_coverage_map(inventory, bank),
             "gaps": gaps,
-            "status": "COMPREHENSIVE" if not gaps else "PARTIAL"}
+            "status": "LIMITED" if not gaps else "PARTIAL"}
 
 
 def ref_downgrade_flags(inventory):
@@ -247,7 +249,7 @@ def ref_gate(audit, inventory=None):
     flags = ref_downgrade_flags(inventory) if inventory else []
     if list(gaps) or flags:
         return "PARTIAL"
-    return "COMPREHENSIVE"
+    return "LIMITED"
 
 
 def quote_ok(excerpt, text):
@@ -338,14 +340,30 @@ def gate_status(audit, inventory=None):
     return ref_gate(audit, inventory)
 
 
+def repair_round(inventory, round_banks):
+    """One bounded repair round: audit, repair only flagged KUs, re-audit.
+
+    Never repeats: the workflow grants exactly one targeted repair round, so
+    the result after the round is final (LIMITED clean / PARTIAL with honest
+    remaining gaps)."""
+    banks = list(round_banks)
+    audits = []
+    for bank in banks:
+        audits.append(audit_bank(inventory, bank))
+    if not audits:
+        raise ValueError("no bank to audit")
+    return audits
+
+
 def gap_loop(inventory, banks, max_rounds):
-    """I2 loop: audit each round; stop early on COMPREHENSIVE."""
+    """Compatibility shim for legacy callers: audit each provided round bank
+    in order; a gap-free audit ends the walk."""
     rounds, last = 0, None
     for bank in banks[:max_rounds]:
         last = audit_bank(inventory, bank)
         rounds += 1
-        if last["status"] == "COMPREHENSIVE":
-            return {"status": "COMPREHENSIVE", "rounds": rounds,
+        if last["status"] == "LIMITED":
+            return {"status": "LIMITED", "rounds": rounds,
                     "audit": last}
     return {"status": "PARTIAL", "rounds": rounds, "audit": last}
 
@@ -466,14 +484,14 @@ class TestDowngradeGate(unittest.TestCase):
         inv = load("tests/fixtures/downgrade_inventory.json")
         self.assertEqual(ref_downgrade_flags(inv), ["KU-0201"])
 
-    def test_downgrade_blocks_comprehensive(self):
+    def test_downgrade_blocks_limited(self):
         inv = load("tests/fixtures/downgrade_inventory.json")
-        clean_audit = {"gaps": [], "status": "COMPREHENSIVE"}
+        clean_audit = {"gaps": [], "status": "LIMITED"}
         self.assertEqual(gate_status(clean_audit, inv), "PARTIAL")
         clean_inv = {"units": [{"id": "KU-C1", "tier": 1,
                                 "tier_history": [1]}]}
         self.assertEqual(gate_status(clean_audit, clean_inv),
-                         "COMPREHENSIVE")
+                         "LIMITED")
 
     def test_sample_inventory_has_no_silent_moves(self):
         inv = load("examples/sample_inventory.json")
@@ -508,14 +526,20 @@ class TestSiblingGateDecide(unittest.TestCase):
         self.assertEqual(status, "PARTIAL")
         self.assertTrue(any("tier 1" in r for r in reasons))
 
-    def test_clean_body_is_comprehensive(self):
+    def test_clean_body_is_limited_without_sweep_evidence(self):
         audit = {"anchor_recall": 1.0, "diff_status": "resolved",
                  "density_flags": [],
                  "coverage_by_tier": {"1": {"pct_covered": 100.0},
                                       "2": {"pct_covered": 100.0}},
                  "validation_rates": {"pct_validated": 100.0},
                  "skew_flags": [], "duplicate_flags": [], "limitations": []}
-        self.assertEqual(gate_decide(audit, 1.0)[0], "COMPREHENSIVE")
+        status, reasons = gate_decide(audit, 1.0)
+        # A clean single-pass run is honestly LIMITED; COMPREHENSIVE always
+        # requires verified exhaustive second-pass evidence.
+        self.assertEqual(status, "LIMITED")
+        self.assertTrue(any("verification" in r for r in reasons))
+        ev = {"exhaustive_second_pass": True, "missing_reviews": False}
+        self.assertEqual(gate_decide(audit, 1.0, evidence=ev)[0], "COMPREHENSIVE")
 
     def test_forged_header_ignored_by_decide(self):
         forged = load("tests/fixtures/false_status_forged.json")
@@ -640,10 +664,10 @@ class TestGapLoop(unittest.TestCase):
         self.assertEqual(primaries, audit["gaps"])
         self.assertEqual(sorted(self.r2["gapfill_input"]), audit["gaps"])
 
-    def test_round2_gaps_closed_comprehensive(self):
+    def test_round2_closes_gaps_limited(self):
         audit = audit_bank(self.inv, self.r2)
         self.assertEqual(audit["gaps"], [])
-        self.assertEqual(gate_status(audit), "COMPREHENSIVE")
+        self.assertEqual(gate_status(audit), "LIMITED")
 
     def test_one_remaining_gap_stays_partial(self):
         partial = {"questions": [q for q in self.r2["questions"]
@@ -652,13 +676,15 @@ class TestGapLoop(unittest.TestCase):
         self.assertEqual(audit["gaps"], ["KU-0108"])
         self.assertEqual(gate_status(audit), "PARTIAL")
 
-    def test_max_rounds_termination(self):
-        out = gap_loop(self.inv, [self.r1], max_rounds=2)
-        self.assertEqual(out["status"], "PARTIAL")
-        self.assertLessEqual(out["rounds"], 2)
-        out2 = gap_loop(self.inv, [self.r1, self.r2], max_rounds=2)
-        self.assertEqual((out2["status"], out2["rounds"]),
-                         ("COMPREHENSIVE", 2))
+    def test_repair_round_bounds(self):
+        """Exactly one bounded repair round: round1 + repair -> final result."""
+        audits = repair_round(self.inv, [self.r1, self.r2])
+        self.assertEqual(len(audits), 2)
+        self.assertEqual(audits[0]["status"], "PARTIAL")
+        self.assertEqual(audits[-1]["status"], "LIMITED")
+        # A still-incomplete repair round ends at PARTIAL, honest about gaps.
+        out = repair_round(self.inv, [self.r1])
+        self.assertEqual(out[0]["status"], "PARTIAL")
 
 
 class TestSampleInventory(unittest.TestCase):

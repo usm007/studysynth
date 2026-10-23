@@ -204,7 +204,14 @@ class TestGateBehavior(unittest.TestCase):
                  "cognitive_by_tier": {"1": {"pct": 100.0}}, "cognitive_gaps": {},
                  "purpose_coverage": {"direct_recall": 2}, "has_explicit_purposes": True,
                  "unaddressed_clusters": [], "missing_purposes": []}
-        self.assertEqual(gatemod.decide(audit, 1.0)[0], "COMPREHENSIVE")
+        # Without exhaustive second-pass evidence the single FAST workflow
+        # reports a clean run as honestly LIMITED, never COMPREHENSIVE.
+        status, reasons = gatemod.decide(audit, 1.0)
+        self.assertEqual(status, "LIMITED")
+        self.assertTrue(any("verification" in r for r in reasons))
+        # Legacy evidence (verified exhaustive sweep) still certifies COMPREHENSIVE.
+        ev = {"exhaustive_second_pass": True, "missing_reviews": False}
+        self.assertEqual(gatemod.decide(audit, 1.0, evidence=ev)[0], "COMPREHENSIVE")
 
     def test_weak_blueprint_cognitive_gap_blocks(self):
         audit = {"anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],

@@ -265,8 +265,8 @@ def benchmark_pipeline_representative():
             }, wall_time
 
         # 1. Cold cache
-        print("\n[Scenario 1] Cold cache run (BALANCED mode)...")
-        scen1, t_cold = run_scenario("1_cold_cache", ["--processing-mode", "BALANCED"])
+        print("\n[Scenario 1] Cold cache single-workflow run...")
+        scen1, t_cold = run_scenario("1_cold_cache")
         scenarios["1_cold_cache"] = scen1
         if scen1:
             print("  Wall-clock time: %.3fs | Cache misses: %d | Gate: %s" %
@@ -278,7 +278,7 @@ def benchmark_pipeline_representative():
 
         # 2. Warm cache with identical inputs
         print("\n[Scenario 2] Warm cache run with identical inputs...")
-        scen2, t_warm = run_scenario("2_warm_cache_identical", ["--processing-mode", "BALANCED"])
+        scen2, t_warm = run_scenario("2_warm_cache_identical")
         scenarios["2_warm_cache_identical"] = scen2
         if scen2:
             warm_audit_path = build_dir / run_id / "audit_report.json"
@@ -299,7 +299,7 @@ def benchmark_pipeline_representative():
         b_data["questions"][0]["stem"] = "Modified stem for benchmark downstream invalidation test."
         lib_common.save_json(str(mod_bank), b_data)
         scen3, _ = run_scenario("3_warm_cache_mutated_bank", [
-            "--bank", str(mod_bank), "--processing-mode", "BALANCED"
+            "--bank", str(mod_bank)
         ])
         scenarios["3_warm_cache_mutated_bank"] = scen3
         if scen3:
@@ -313,21 +313,23 @@ def benchmark_pipeline_representative():
         c_data["anchor_recall_threshold"] = 99.0
         lib_common.save_json(str(mod_cfg), c_data)
         scen4, _ = run_scenario("4_warm_cache_mutated_config", [
-            "--config", str(mod_cfg), "--processing-mode", "BALANCED"
+            "--config", str(mod_cfg)
         ])
         scenarios["4_warm_cache_mutated_config"] = scen4
         if scen4:
             print("  Wall-clock time: %.3fs | Skipped: %s | Rerun: %s" %
                   (scen4["wall_time_s"], ", ".join(scen4["stages_skipped"]), ", ".join(scen4["stages_rerun"])))
 
-        # 5. Balanced vs Comprehensive Processing Modes
-        print("\n[Scenario 5] Comprehensive mode execution...")
-        scen5, _ = run_scenario("5_comprehensive_mode", ["--processing-mode", "COMPREHENSIVE"])
-        scenarios["5_comprehensive_mode"] = scen5
+        # 5. Profile/style mutation: authoring stage costs only
+        print("\n[Scenario 5] Optional profile mutation (authoring stages)...")
+        scen5, _ = run_scenario("5_profile_mutation", [
+            "--profile", str(ROOT / "profiles/CTET.json")
+        ])
+        scenarios["5_profile_mutation"] = scen5
         if scen5:
-            print("  Wall-clock time: %.3fs | Gate: %s | Sweep verified: %s" %
+            print("  Wall-clock time: %.3fs | Gate: %s | Rerun: %s" %
                   (scen5["wall_time_s"], scen5["gate_status"],
-                   scen5.get("verification_evidence", {}).get("second_pass_sweep")))
+                   ", ".join(scen5["stages_rerun"])))
 
     return {
         "environment": env_info,

@@ -7,20 +7,21 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib_common import load_json, save_json, ensure_dir, run_main
-from cache import sha_file, sha_file_full, sha_obj, load_manifest, save_manifest, atomic_save_json
+from cache import sha_file, sha_file_full, sha_obj, load_manifest, save_manifest, atomic_save_json, chunk_blocks
 from llm_trace import summarize_llm_trace
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ALL_STAGES = (
-    "ingest", "anchors", "check", "validate", "quality", "coverage", "dedupe",
+    "ingest", "anchors", "check", "plan", "validate", "quality", "coverage", "dedupe",
     "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"
 )
-STAGES = ("ingest", "anchors", "check", "validate", "quality", "coverage", "dedupe", "audit", "gate", "report")
+STAGES = ("ingest", "anchors", "check", "plan", "validate", "quality", "coverage", "dedupe", "audit", "gate", "report")
 # redo invalidation: stage -> itself + descendants
 DESCENDANTS = {
     "ingest": ALL_STAGES,
-    "anchors": ("anchors", "check", "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"),
-    "check": ("check", "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"),
+    "anchors": ("anchors", "check", "plan", "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"),
+    "check": ("check", "plan", "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"),
+    "plan": ("plan",),
     "validate": ("validate", "coverage", "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"),
     "quality": ("quality", "coverage", "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"),
     "dedupe": ("dedupe", "coverage", "audit", "gate", "report", "package", "build_web", "build_pdf", "delivery"),
@@ -113,7 +114,6 @@ def compute_stage_fingerprint(stage, R, F, a, cfg, extra=None):
     anchors_sha = _file_sha(os.path.join(HERE, "anchors.py"))
     naming_sha = _file_sha(os.path.join(HERE, "naming.py"))
     mode = getattr(a, "mode", None) or cfg.get("fidelity_mode") or "SOURCE_BOUND"
-    proc_mode = (getattr(a, "processing_mode", None) or cfg.get("processing_mode") or "BALANCED").upper()
     pkg_dest = os.path.join(R, "quiz_package.json")
 
     fp = {"stage": stage}
@@ -136,6 +136,21 @@ def compute_stage_fingerprint(stage, R, F, a, cfg, extra=None):
         fp["threshold"] = cfg.get("anchor_recall_threshold", 100)
         fp["code"] = _file_sha(os.path.join(HERE, "inventory_check.py"))
         fp["helpers"] = [anchors_sha, lib_common_sha]
+    elif stage == "plan":
+        fp["chunks"] = F.get("chunks")
+        fp["struct"] = _file_sha(F.get("struct"))
+        fp["inventory"] = _file_sha(getattr(a, "inventory", None))
+        fp["count"] = getattr(a, "count", None)
+        fp["config"] = {
+            "batching": cfg.get("batching"),
+            "per_ku_cap": cfg.get("per_ku_cap", 3),
+            "section_share_cap": cfg.get("section_share_cap", 2.0),
+            "tier_targets": cfg.get("tier_targets"),
+            "default_count_policy": cfg.get("default_count_policy"),
+        }
+        fp["schema"] = _file_sha(os.path.join(schdir, "knowledge-unit.schema.json"))
+        fp["code"] = _file_sha(os.path.join(HERE, "plan.py"))
+        fp["helpers"] = [anchors_sha, lib_common_sha, _file_sha(os.path.join(HERE, "anchors.py"))]
     elif stage == "validate":
         fp["bank"] = _file_sha(getattr(a, "bank", None))
         fp["inventory"] = _file_sha(getattr(a, "inventory", None))
@@ -155,7 +170,6 @@ def compute_stage_fingerprint(stage, R, F, a, cfg, extra=None):
         fp["struct"] = _file_sha(F.get("struct"))
         fp["profile"] = _file_sha(getattr(a, "profile", None))
         fp["fidelity_mode"] = mode
-        fp["processing_mode"] = proc_mode
         fp["config"] = {
             "duplicate_threshold": cfg.get("duplicate_threshold", 0.85),
             "options_per_question": cfg.get("options_per_question", 4),
@@ -204,7 +218,6 @@ def compute_stage_fingerprint(stage, R, F, a, cfg, extra=None):
         fp["helpers"] = [anchors_sha, lib_common_sha]
     elif stage == "gate":
         fp["audit"] = _file_sha(F.get("audit"))
-        fp["processing_mode"] = proc_mode
         fp["threshold"] = cfg.get("anchor_recall_threshold", 100)
         fp["gate_thresholds"] = cfg.get("gate_thresholds")
         ev_p = os.path.join(R, "verification_evidence.json")
@@ -251,19 +264,22 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", required=True)
     ap.add_argument("--run-id", required=True)
-    ap.add_argument("--profile", required=True)
+    ap.add_argument("--profile", default=None,
+                    help="Optional exam profile (profiles/<EXAM>.json). Not required: the "
+                         "single FAST workflow uses a generalized competitive-exam policy "
+                         "unless a profile is supplied for style-specific authoring.")
     ap.add_argument("--config", required=True)
     ap.add_argument("--count", type=int, default=None)
     ap.add_argument("--build-dir", default="build")
     ap.add_argument("--redo", default=None)
     ap.add_argument("--mode", default=None)
-    ap.add_argument("--processing-mode", choices=["QUICK", "BALANCED", "COMPREHENSIVE"], default=None,
-                    help="Pipeline processing mode: QUICK, BALANCED (default), or COMPREHENSIVE")
     ap.add_argument("--inventory", default=None)
     ap.add_argument("--bank", default=None)
     ap.add_argument("--ignored", default=None)
     ap.add_argument("--diff", default=None)
     ap.add_argument("--package", action="store_true", help="Assemble quiz_package.json")
+    ap.add_argument("--title", default=None, help="Quiz title recorded in the package and deliverables")
+    ap.add_argument("--source-label", default=None, help="Human-readable description of the source document")
     ap.add_argument("--web", action="store_true", help="Build standalone HTML quiz (implies --package)")
     ap.add_argument("--pdf", action="store_true", help="Build print-ready PDFs (implies --package)")
     ap.add_argument("--full", action="store_true", help="Run full pipeline including package, web, and pdf")
@@ -277,10 +293,12 @@ def main(argv):
     if not os.path.isfile(a.source):
         print("error: source not found: %s" % a.source, file=sys.stderr)
         return 1
-    for p, n in ((a.profile, "profile"), (a.config, "config")):
-        if not os.path.isfile(p):
-            print("error: %s not found: %s" % (n, p), file=sys.stderr)
-            return 1
+    if a.profile and not os.path.isfile(a.profile):
+        print("error: profile not found: %s" % a.profile, file=sys.stderr)
+        return 1
+    if not os.path.isfile(a.config):
+        print("error: config not found: %s" % a.config, file=sys.stderr)
+        return 1
     if a.inventory and not os.path.isfile(a.inventory):
         print("error: inventory not found: %s" % a.inventory, file=sys.stderr)
         return 1
@@ -292,19 +310,24 @@ def main(argv):
     pkg_dest = os.path.join(R, "quiz_package.json")
     cfg = load_json(a.config)
     mode = a.mode or cfg.get("fidelity_mode", "SOURCE_BOUND")
-    proc_mode = str(a.processing_mode or cfg.get("processing_mode") or "BALANCED").upper()
-    metrics = {"run_id": a.run_id, "processing_mode": proc_mode, "fidelity_mode": mode,
-               "stages": {}, "model_calls": "unavailable (orchestrator cannot observe LLM layer)",
-               "cache": {"hits": 0, "misses": 0}}
     F = {"struct": os.path.join(R, "document_structure.json"),
          "anchors": os.path.join(R, "anchors.json"),
+         "chunks": os.path.join(R, "chunks.json"),
          "check": os.path.join(R, "inventory_check.json"),
+         "coverage_plan": os.path.join(R, "coverage_plan.json"),
+         "generation_batches": os.path.join(R, "generation_batches.json"),
          "validation": os.path.join(R, "validation_results.json"),
          "quality": os.path.join(R, "quality_report.json"),
          "coverage": os.path.join(R, "coverage_matrix.json"),
          "dedupe": os.path.join(R, "dedupe_report.json"),
          "audit": os.path.join(R, "audit_report.json"),
          "gate": os.path.join(R, "gate.json")}
+    metrics = {"run_id": a.run_id, "workflow": "FAST",
+               "verification_policy": "single_pass_blind_review",
+               "fidelity_mode": mode,
+               "stages": {},
+               "model_calls": "unavailable (no llm_trace.jsonl recorded)",
+               "cache": {"hits": 0, "misses": 0}}
     manifest_path = os.path.join(R, "artifact_manifest.json")
     metrics_path = os.path.join(R, "run_metrics.json")
     repair_path = os.path.join(R, "repair_queue.json")
@@ -386,6 +409,28 @@ def main(argv):
     sku = os.path.join(schdir, "knowledge-unit.schema.json")
     sq = os.path.join(schdir, "question.schema.json")
     bank_schema_ok = True
+
+    # ---- plan stage (deterministic Phase C): chunks + reconciliation/blueprint
+    plan_outs = [F["chunks"]] + ([F["coverage_plan"], F["generation_batches"]] if a.inventory else [])
+    plan_rc = None
+    if fresh("plan", plan_outs):
+        mark("plan", "skipped", "cache hit (fingerprint match)")
+        metrics["cache"]["hits"] += 1
+    else:
+        metrics["cache"]["misses"] += 1
+        pargs = ["--document-structure", F["struct"], "--out-dir", R, "--config", a.config]
+        if a.inventory:
+            pargs += ["--inventory", a.inventory]
+        if a.count is not None:
+            pargs += ["--count", str(a.count)]
+        plan_rc = timed("plan", lambda: run_stage(mod("plan").main, pargs))
+        mark("plan", "ok" if plan_rc == 0 else "failed",
+             "" if plan_rc == 0 else "planner failed; see plan stderr")
+        if plan_rc:
+            save_json(metrics_path, metrics)
+            return plan_rc
+        record_manifest("plan", plan_outs)
+
     if not a.inventory:
         mark("check", "pending", "no --inventory (LLM step)")
         mark("validate", "pending", "needs inventory")
@@ -408,8 +453,7 @@ def main(argv):
                 pkg_dest,
                 "--out-dir", deliv_dir,
                 "--mode", a.delivery_mode,
-                "--profile", a.profile,
-            ])
+            ] + (["--profile", a.profile] if a.profile else []))
             mark("delivery", "ok" if rc == 0 else "failed")
             if rc:
                 save_json(sp, state)
@@ -466,13 +510,13 @@ def main(argv):
 
     def do_validate():
         s = time.monotonic()
-        rc = run_stage(mod("validate_questions").main, [a.bank, a.inventory, F["struct"], "--profile", a.profile, "--mode", mode, "--config", a.config, "--out", F["validation"]])
+        rc = run_stage(mod("validate_questions").main, [a.bank, a.inventory, F["struct"], "--mode", mode, "--config", a.config, "--out", F["validation"]] + (["--profile", a.profile] if a.profile else []))
         metrics["stages"]["validate"] = {"duration_s": round(time.monotonic() - s, 4), "rc": rc}
         return rc
 
     def do_quality():
         s = time.monotonic()
-        rc = run_stage(mod("quality").main, [a.bank, a.inventory, F["struct"], "--profile", a.profile, "--mode", mode, "--config", a.config, "--out", F["quality"]])
+        rc = run_stage(mod("quality").main, [a.bank, a.inventory, F["struct"], "--mode", mode, "--config", a.config, "--out", F["quality"]] + (["--profile", a.profile] if a.profile else []))
         metrics["stages"]["quality"] = {"duration_s": round(time.monotonic() - s, 4), "rc": rc}
         return rc
 
@@ -579,7 +623,7 @@ def main(argv):
         metrics["cache"]["hits"] += 1
     else:
         metrics["cache"]["misses"] += 1
-        args = [a.inventory, F["coverage"], F["validation"], F["anchors"], "--profile", a.profile, "--config", a.config, "--struct", F["struct"], "--quality", F["quality"], "--out", F["audit"]]
+        args = [a.inventory, F["coverage"], F["validation"], F["anchors"], "--config", a.config, "--struct", F["struct"], "--quality", F["quality"], "--out", F["audit"]] + (["--profile", a.profile] if a.profile else [])
         if a.bank:
             args += ["--bank", a.bank]
         if a.ignored:
@@ -599,15 +643,15 @@ def main(argv):
         metrics["cache"]["misses"] += 1
         ev_path = os.path.join(R, "verification_evidence.json")
         ev_data = {
-            "processing_mode": proc_mode,
+            "verification_policy": "single_pass_blind_review",
+            "exhaustive_second_pass": False,
             "source_sha": sha_file_full(a.source) if a.source and os.path.isfile(a.source) else None,
-            "second_pass_sweep": (proc_mode == "COMPREHENSIVE"),
             "blind_review_completed": os.path.isfile(blind_path),
-            "missing_reviews": False,
+            "missing_reviews": not os.path.isfile(blind_path),
             "stages_completed": sorted(list(manifest.get("stages", {}).keys())),
         }
         atomic_save_json(ev_path, ev_data)
-        rc = timed("gate", lambda: run_stage(mod("gate").main, [F["audit"], "--config", a.config, "--processing-mode", proc_mode, "--evidence", ev_path]))
+        rc = timed("gate", lambda: run_stage(mod("gate").main, [F["audit"], "--config", a.config, "--evidence", ev_path]))
         mark("gate", "ok" if rc == 0 else "failed")
         if rc:
             save_json(metrics_path, metrics)
@@ -624,13 +668,17 @@ def main(argv):
 
     pkg_dest = os.path.join(R, "quiz_package.json")
     if do_pkg and a.bank and a.inventory:
-        rc = timed("package", lambda: run_stage(mod("package").main, [
+        pkg_args = [
             a.bank, F["audit"], F["gate"],
-            "--profile", a.profile,
             "--inventory", a.inventory,
             "--quality", F["quality"],
             "--out", pkg_dest
-        ]))
+        ] + (["--profile", a.profile] if a.profile else [])
+        if a.title:
+            pkg_args += ["--title", a.title]
+        if a.source_label:
+            pkg_args += ["--source-label", a.source_label]
+        rc = timed("package", lambda: run_stage(mod("package").main, pkg_args))
         mark("package", "ok" if rc == 0 else "failed")
         if rc:
             save_json(sp, state)
@@ -641,7 +689,7 @@ def main(argv):
     def run_web():
         import shutil
         from naming import parse_clean_title, generate_slug
-        clean_title = parse_clean_title(a.source)
+        clean_title = a.title or parse_clean_title(a.source)
         slug_file = generate_slug(a.source)
         slug_dest = os.path.join(R, slug_file)
         html_dest = os.path.join(R, "quiz.html")
@@ -671,7 +719,7 @@ def main(argv):
                 module_path=slug_dest,
                 title=clean_title,
                 metadata={
-                    "status": state.get("stages", {}).get("gate", {}).get("status", "Comprehensive"),
+                    "status": state.get("stages", {}).get("gate", {}).get("status", "PARTIAL"),
                     "question_count": q_cnt,
                     "profile": a.profile,
                 }
@@ -684,7 +732,7 @@ def main(argv):
     def run_pdf():
         pdf_dir = os.path.join(R, "pdf")
         s = time.monotonic()
-        rc = run_stage(mod("build_pdf").main, [pkg_dest, "--out", pdf_dir, "--profile", a.profile])
+        rc = run_stage(mod("build_pdf").main, [pkg_dest, "--out", pdf_dir] + (["--profile", a.profile] if a.profile else []))
         if rc:
             metrics["stages"]["build_pdf"] = {"duration_s": round(time.monotonic() - s, 4), "rc": rc}
             return rc
@@ -728,8 +776,7 @@ def main(argv):
             pkg_dest,
             "--out-dir", deliv_dir,
             "--mode", a.delivery_mode,
-            "--profile", a.profile,
-        ]))
+        ] + (["--profile", a.profile] if a.profile else [])))
         mark("delivery", "ok" if rc == 0 else "failed")
         if rc:
             save_json(sp, state)
@@ -770,24 +817,54 @@ def main(argv):
         res = v.get("results", []) if isinstance(v, dict) else []
         metrics["validated"] = sum(1 for r in res if r.get("status") == "validated")
         metrics["rejected"] = sum(1 for r in res if r.get("status") == "rejected")
-        metrics["repair_queue"] = load_json(repair_path) if os.path.isfile(repair_path) else None
-        metrics["retries"] = 0
-        metrics["gapfill_rounds"] = 0
+        rq = load_json(repair_path) if os.path.isfile(repair_path) else None
+        metrics["repair_queue"] = rq
+        metrics["repairs_suggested"] = len((rq or {}).get("failed", []))
+        metrics["max_repair_retries"] = int((rq or {}).get("max_retries", 0))
+        metrics["repair_rounds_available"] = int(cfg.get("max_repair_rounds", 1))
+    except Exception:
+        pass
+    # ---- work counts: chunks and batches sized by code, not guessed ----
+    try:
+        wr = {"extraction_chunks": 0, "extraction_blocks": 0}
+        b = load_json(F["struct"]) if os.path.isfile(F["struct"]) else {}
+        blocks = b.get("blocks", []) if isinstance(b, dict) else []
+        batching = cfg.get("batching", {}) if isinstance(cfg, dict) else {}
+        wr["extraction_chunks"] = len(chunk_blocks(blocks, max_tokens=int(batching.get("extraction_chunk_tokens", 5000) or 5000)))
+        wr["extraction_blocks"] = len(blocks)
+        metrics["work_counts"] = wr
+    except Exception:
+        pass
+    try:
+        gb = load_json(F["generation_batches"]) if os.path.isfile(F["generation_batches"]) else {}
+        metrics.setdefault("work_counts", {})
+        metrics["work_counts"]["question_batches"] = gb.get("batch_count", len(gb.get("batches", [])))
+        metrics["work_counts"]["planned_questions"] = gb.get("planned_questions")
     except Exception:
         pass
     try:
         qrep = load_json(F["quality"]) if os.path.isfile(F["quality"]) else {}
-        metrics["quality_accepted"] = qrep.get("accepted", 0)
-        metrics["quality_rejected"] = qrep.get("rejected", 0)
+        qs = qrep.get("summary", qrep) if isinstance(qrep, dict) else {}
+        metrics["quality_accepted"] = qs.get("quality_accepted",
+                                             qs.get("accepted",
+                                                    qs.get("accepted_count", 0)))
+        metrics["quality_rejected"] = qs.get("quality_rejected",
+                                             qs.get("rejected",
+                                                    qs.get("rejected_count", 0)))
     except Exception:
         pass
+    # ---- truthful LLM telemetry: every observable call, stage by stage ----
     trace_file = os.path.join(R, "llm_trace.jsonl")
     if os.path.isfile(trace_file):
         summary = summarize_llm_trace(trace_file)
         metrics["llm_telemetry"] = summary
-        metrics["model_calls"] = summary.get("total_calls", 0) if summary else 0
+        metrics["model_calls"] = (summary or {}).get("total_calls", 0)
+        model_s = float((summary or {}).get("total_duration_s", 0.0))
+        metrics["time"] = {"total_s": metrics.get("total_s", 0),
+                           "model_s": round(model_s, 4),
+                           "python_s": round(max(0.0, metrics.get("total_s", 0) - model_s), 4)}
     else:
-        metrics["model_calls"] = "unavailable (orchestrator cannot observe LLM layer)"
+        metrics["model_calls"] = "unavailable (no llm_trace.jsonl recorded by the model layer)"
     save_json(metrics_path, metrics)
     print("pipeline %s: done -> %s (%.2fs, cache hits=%d misses=%d)" % (a.run_id, R, metrics["total_s"], metrics["cache"]["hits"], metrics["cache"]["misses"]))
     # A partially rejected bank completed useful work above but must not

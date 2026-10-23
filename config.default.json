@@ -1,1 +1,27 @@
-{"anchor_recall_threshold": 100, "batching": {"extraction_chunk_tokens": 5000, "extraction_concurrency": 3, "question_batch_size": 8, "question_concurrency": 4, "review_batch_size": 6, "review_concurrency": 4}, "default_profile": "GENERAL_PSC", "duplicate_threshold": 0.85, "fidelity_mode": "SOURCE_BOUND", "language": "source", "max_gapfill_rounds": 5, "max_repair_retries": 2, "options_per_question": 4, "outputs": ["web", "pdf"], "per_ku_cap": 3, "processing_mode": "BALANCED", "scope_mode": "COMPREHENSIVE", "section_share_cap": 2.0, "tier_targets": {"1": 100, "2": 100, "3": 80, "4": 0}}
+{
+  "$schema-mode": "StudySynth FAST pipeline config (single workflow; no processing modes)",
+  "anchor_recall_threshold": 100,
+  "batching": {
+    "extraction_chunk_tokens": 5000,
+    "extraction_concurrency": 3,
+    "question_batch_size": 12,
+    "question_concurrency": 4,
+    "review_batch_size": 12,
+    "review_concurrency": 4
+  },
+  "default_count_policy": {
+    "min_questions": 8,
+    "note": "Deterministic default when --count is not supplied: one planned row per examinable KU, extra cognitive forms for high-evidence KUs up to per_ku_cap, min 8 items; never manufactured beyond source support."
+  },
+  "default_profile": "GENERAL_PSC",
+  "duplicate_threshold": 0.85,
+  "fidelity_mode": "SOURCE_BOUND",
+  "language": "source",
+  "max_repair_retries": 2,
+  "max_repair_rounds": 1,
+  "options_per_question": 4,
+  "outputs": ["web", "pdf"],
+  "per_ku_cap": 3,
+  "section_share_cap": 2.0,
+  "tier_targets": {"1": 100, "2": 100, "3": 80, "4": 0}
+}

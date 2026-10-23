@@ -37,28 +37,51 @@ openpyxl for XLSX; pymupdf and psutil optional).
 
 ## Quick start
 
-**Input**: one source file plus an exam profile (`profiles/<EXAM>.json`).
+**Input**: one source file. No exam profile is required — pipelines run a
+generalized competitive-exam authoring policy; `profiles/<EXAM>.json` is
+optional style input (authoring wording/distractor/archetype rules only; it
+never changes the workflow, the count, or the gates).
 
-1. **Structure** — deterministic only:
+1. **Structure + plan scaffold** — deterministic only:
    ```
    python scripts/pipeline.py --source <file> --run-id <id> \
-     --profile profiles/<EXAM>.json --config config.default.json
+     --config config.default.json
    ```
-   Writes `build/<id>/document_structure.json` and `anchors.json`. Stages that
-   need the model stop with `pending (LLM step)`; that is expected, not a failure.
-2. **Inventory** — write `knowledge_inventory.json` from `prompts/extract.md` +
-   `prompts/inventory.md`, verify excerpts with `scripts/locate_excerpts.py`,
-   then re-run step 1 adding `--inventory <file>`.
-3. **Bank** — write `question_bank.json` from `prompts/exam-design.md` +
-   `prompts/generate.md`, then re-run adding `--bank <file>`.
-4. **Deliver** — re-run adding `--full` (package + HTML + PDF) or `--deliver`
-   (single delivery folder).
+   Writes `document_structure.json`, `anchors.json`, and `chunks.json` (the
+   extraction chunking, computed in code). Stages that need the model stop
+   with `pending (LLM step)`; that is expected, not a failure.
+2. **Extraction** — one pass per chunk from `prompts/extract.md` (extraction +
+   classification + scoring + question hints in the SAME call; save outputs as
+   `chunk_<n>.json`), verify excerpts with `scripts/locate_excerpts.py`, then
+   generate batches and blueprint with the deterministic planner:
+   ```
+   python scripts/plan.py --document-structure build/<id>/document_structure.json \
+     --out-dir build/<id> --config config.default.json --extraction-dir build/<id>
+   ```
+   This merges chunks (identity dedupe only), writes
+   `knowledge_inventory.json`, `coverage_plan.json` and
+   `generation_batches.json`. Re-run step 1 with
+   `--inventory build/<id>/knowledge_inventory.json` to continue.
+3. **Bank** — write one `batch_<n>.json` per generation batch
+   (`prompts/generate.md`, ~12 questions/call), then assemble and continue:
+   `python scripts/plan.py --bank-from build/<id> --bank-out build/<id>/question_bank.json`
+   followed by step 1 again adding `--bank build/<id>/question_bank.json`.
+4. **Blind review + repair** — the single independent verification stream
+   (`prompts/review-batch.md`): keyless re-solve of redacted questions,
+   compared in code; failures land in the repair queue and take exactly one
+   bounded repair round (`prompts/repair.md`).
+5. **Deliver** — re-run the pipeline adding `--full` (package + HTML + PDF)
+   or `--deliver` (single delivery folder). The requested question count is
+   an ordinary parameter: pass `--count N` to step 1/planner when the user
+   asks for N; otherwise the default count policy applies and any shortfall
+   is reported honestly, never padded.
 
 **Outputs** in `build/<id>/`: `quiz_package.json`, `quiz.html`,
 `pdf/question-paper-A.pdf`, `pdf/answer-key-B.pdf`, `pdf/explanations-C.pdf`,
 and the evidence trail (`validation_results.json`, `quality_report.json`,
-`coverage_matrix.json`, `audit_report.json`, `gate.json`, `run_metrics.json`).
-Report status from `gate.json` and the printed FINAL REPORT only.
+`coverage_matrix.json`, `audit_report.json`, `gate.json`, `run_metrics.json`,
+`llm_trace.jsonl`). Report status from `gate.json` and the printed FINAL
+REPORT only.
 
 ## Verify the artifact (dry run)
 
@@ -66,7 +89,7 @@ Report status from `gate.json` and the printed FINAL REPORT only.
 
 ```
 python scripts/pipeline.py --source examples/sample_source.md --run-id verify \
-  --profile profiles/GENERAL_PSC.json --config config.default.json \
+  --config config.default.json \
   --inventory examples/sample_inventory.json --bank examples/starter_bank.json \
   --ignored examples/ignored_anchors.json --full
 ```
@@ -95,9 +118,13 @@ demo; `starter_bank.json` is.
 - A nonzero exit from validation is signal, not a crash: rejected questions go
   to `repair_queue.json` with exact reasons, valid items continue, and each item
   gets `max_repair_retries` attempts (default 2).
-- Unfixable gaps remain visible. Deliver as LIMITED or PARTIAL with the honest
-  label; never promote a run to COMPREHENSIVE without passing gate evidence.
-  Gap-fill stops at the mode cap (QUICK 1, BALANCED 2, COMPREHENSIVE 5 rounds).
+- Unfixable gaps remain visible. Deliver as the honest status the gate
+  produced (LIMITED for a clean single-pass run, PARTIAL when substance
+  still fails); never promote a run to COMPREHENSIVE without verified
+  exhaustive-sweep evidence — and the single FAST workflow does not run
+  that sweep, so a clean one-pass run is LIMITED by design. There is
+  exactly ONE targeted repair round (`max_repair_rounds: 1`), not a
+  gap-fill loop; failures after it are final and stay visible.
 
 ## Rules R1–R13 (resolve conflicts toward accuracy first)
 
@@ -107,7 +134,8 @@ demo; `starter_bank.json` is.
 - R4 SOURCE_BOUND: no fact outside the document appears as true. Fixes are rewording, not new facts.
 - R5 Single-select: exactly one defensible answer (checked by blind re-solve + `stmt_check`).
 - R6 Every distractor needs `distractor_origin` + `confusion_type` (schema enums) + `ku_ref` where from source + `distractor_purpose` (confusable_fact | adjacent_value | partial_truth | reversed_relation | wrong_category | wrong_entity | wrong_date | scope_error | causal_reversal). No nonsense distractors.
-- R7 Never cut important KUs to hit a round number (FIXED_COUNT keeps weighted coverage + honest report).
+- R7 Never cut important KUs to hit a round number (the count policy keeps
+  weighted coverage + an honest report of what was deferred).
 - R8 No section over its share: `section_share_cap` (default 2.0x) enforced in `audit.py`.
 - R9 No trivia/entertainment questions; sober academic tone everywhere.
 - R10 Every question teaches, discriminates, or diagnoses (explanation + confusion tag).
@@ -117,128 +145,136 @@ demo; `starter_bank.json` is.
 
 ## Pipeline (prompts/ → scripts/, artifacts in build/<run_id>/)
 
-| # | LLM step (prompt) | Deterministic script | Writes |
+| # | Step (LLM pass or deterministic) | Script / prompt | Writes |
 |---|---|---|---|
 | 1 | ingest config | `scripts/ingest.py SRC --out build --run-id R` | `document_structure.json`, `normalized_source.txt` |
 | 2 | — | `scripts/anchors.py struct --out anchors.json` | `anchors.json` |
-| 3 | `prompts/extract.md` + `prompts/inventory.md` | hand-write inventory | `knowledge_inventory.json` (draft) |
-| 4 | — | `scripts/locate_excerpts.py inventory struct` | fills char spans/paths; FAILS on non-verbatim excerpts |
-| 5 | `prompts/second-pass.md` (re-extract blind) | record diff | `inventory_diff.json` |
-| 6 | `prompts/classify.md` | `scripts/inventory_check.py` (+ `--ignored`, `--diff`) | recall 100%, density, diff resolved |
-| 7 | `prompts/exam-design.md` (+ profile: purpose + cognitive_level + difficulty_reason per row) | — | `coverage_plan.json` (per-KU cap 3, type mix, share cap, required purposes) |
-| 8 | `prompts/generate.md` + `prompts/statement-engine.md` (statement/elimination/distinction/association/chronology/exception/integrated) | hand-write bank | `question_bank.json` (draft, every question has a purpose) |
-| 9 | — | `scripts/validate_questions.py` (+ profile/mode/config) | `validation_results.json`; rejected = no credit |
-| 10 | `prompts/validate-blind.md` (solve keyless from source) | record | `validation_semantic.json` |
-| 11 | `prompts/validate-semantic.md` (checklist per question) | record | `validation_semantic.json` |
-| 12 | — | `scripts/coverage.py`, `scripts/dedupe.py` | `coverage_matrix.json` (content + cognitive per-KU, purpose/section/tier coverage, CONTENT/COGNITIVE labels), `dedupe_report.json` |
-| 13 | `prompts/audit-review.md` | `scripts/audit.py` | `audit_report.json` (cognitive gaps, distinction gaps, purpose coverage, cluster status) (+ keep `audit_report_roundN.json`) |
-| 14 | `prompts/gap-fill.md` (exact missing forms/clusters/purposes only) | loop 9–13, max 5 rounds | gap-fill bank additions |
-| 15 | — | `scripts/gate.py` → `scripts/report.py` | `gate.json` + printed FINAL REPORT (quote it) |
-| 16 | `prompts/revision.md` | `scripts/package.py --inventory ...` | `quiz_package.json` (validated only, tiers stamped) |
-| 17 | — | `scripts/build_web.py`, `scripts/build_pdf.py`, `scripts/check_pdf.py` | `quiz.html`, `pdf/*.pdf`, `check_report.json` |
+| 3 | — | `scripts/plan.py --document-structure --out-dir ` (no inventory yet) | `chunks.json` (deterministic chunking, chunk ids) |
+| 4 | `prompts/extract.md` — ONE call per chunk: extract + classify + dimensions + tiers + question hints | save `chunk_<n>.json` per chunk | per-chunk extraction files |
+| 5 | — | merge + blueprint in `scripts/plan.py --extraction-dir` (identity dedupe, tiers, hints→rows, per-KU cap, section share cap, count policy) | `knowledge_inventory.json`, `coverage_plan.json`, `generation_batches.json` (~12 rows/batch with evidence packs) |
+| 6 | `prompts/generate.md` — one batch per call (~12 rows), statements inlined | save `batch_<n>.json` | per-batch generation files |
+| 7 | — | assemble bank: `scripts/plan.py --bank-from` (deterministic order, duplicate-ID rejection) | `question_bank.json` |
+| 8 | — | `scripts/validate_questions.py` (+ optional profile/config) | `validation_results.json`; rejected = no credit |
+| 9 | `prompts/review-batch.md` → `prompts/review-blind-batch.md` (sole review stream; PHYSICALLY redacted payload) | `scripts/review_batch.py` compares blind answers in code | blind review records; mismatches → `repair.json` |
+| 10 | — | `scripts/quality.py`, `scripts/dedupe.py` | `quality_report.json` (11 dimensions, Rubric A–D), `dedupe_report.json` |
+| 11 | — | `scripts/coverage.py` | `coverage_matrix.json` (content + cognitive per-KU, purpose/section/tier coverage, CONTENT/COGNITIVE labels) |
+| 12 | `prompts/repair.md` — ONE bounded round, only queued questions | re-validate + re-review repaired items | `repair.json` outcomes; retired items stay excluded |
+| 13 | — | `scripts/audit.py`, `scripts/gate.py` → `scripts/report.py` | `audit_report.json` + `gate.json` + printed FINAL REPORT (quote it) |
+| 14 | `prompts/revision.md` | `scripts/package.py --inventory ...` | `quiz_package.json` (validated only, tiers stamped) |
+| 15 | — | `scripts/build_web.py`, `scripts/build_pdf.py`, `scripts/check_pdf.py` | `quiz.html`, `pdf/*.pdf`, `check_report.json` |
 
-`scripts/pipeline.py --source --run-id --profile --config [--processing-mode MODE --inventory --bank --ignored --diff]`
-runs the deterministic stages with checkpoints/resume (`--redo STAGE`).
+The pipeline command runs the deterministic stages with checkpoints/resume
+(`--redo STAGE`):
+`scripts/pipeline.py --source --run-id --config [--profile <optional style profile>] [--inventory --bank --ignored --diff --count]`.
 
-**Profile style context.** When the resolved profile contains a
+**Profile style context** (optional). When a profile is supplied AND contains a
 `question_style_profile` block (for example `profiles/CTET.json`), generate the
 style context before the corresponding LLM step and prepend it to that prompt:
 
 ```
-python scripts/profile_style.py --profile profiles/CTET.json --stage classify
-python scripts/profile_style.py --profile profiles/CTET.json --stage exam-design
+python scripts/profile_style.py --profile profiles/CTET.json --stage extract
 python scripts/profile_style.py --profile profiles/CTET.json --stage generate
 ```
 
 The block changes only how questions are selected and worded. It never supplies
 paper counts, durations, sections, marks or type percentages. Profiles without
-the block (for example `TEACHING.json`) produce no context and keep the generic
-behaviour. After generation, `scripts/validate_questions.py --profile <profile.json>`
-also applies `validate_question_style(question, profile)` from
-`scripts/profile_style.py` and rejects style-specific defects (classroom
-context, absurd distractors, answer-length clues, passage requirements,
-assertion-reason payload, banned option forms) while keeping SOURCE_BOUND
-enforced. Profiles without the style block are unaffected.
+the block produce no context and keep the generic behaviour. After generation,
+`scripts/validate_questions.py --profile <profile.json>` also applies
+`validate_question_style(question, profile)` where provided and rejects
+style-specific defects (classroom context, absurd distractors, answer-length
+clues, passage requirements, assertion-reason payload, banned option forms)
+while keeping SOURCE_BOUND enforced.
 
-`--processing-mode` accepts `QUICK`, `BALANCED` (default), or `COMPREHENSIVE`.
-Stage-specific dependency fingerprints avoid unnecessary stage invalidation on downstream changes.
-`--redo STAGE` invalidates that stage + descendants; `--redo all` forces recompute.
+Stage-specific dependency fingerprints avoid unnecessary stage invalidation on
+downstream changes. `--redo STAGE` invalidates that stage + descendants;
+`--redo all` forces recompute. There is NO `--processing-mode` flag and no
+QUICK/BALANCED/COMPREHENSIVE processing modes: one FAST workflow covers every
+request, and the requested question count is an ordinary parameter
+(`--count N`), not a mode. `fidelity_mode` (`SOURCE_BOUND` default / `ENHANCED`
+opt-in external facts) still applies.
 
-## Processing modes (`--processing-mode`)
+## One workflow, honest scope (no processing modes)
 
-Select mode consistently:
-- **`QUICK`**: Use when the user requests a quick practice set, a small batch, a sample, or a fast first pass.
-  - Primary extraction workflow runs over selected source.
-  - Skips the exhaustive second-pass sweep across every source chunk.
-  - Targeted source checks for answer-critical facts, uncertain evidence, uncovered anchors, and critical tables/dates/numbers.
-  - Retains both blind and semantic review streams and all 11 deterministic quality gates.
-  - Default maximum gap-fill rounds: **1**.
-  - Re-reviews only new or modified questions.
-  - Result status is `LIMITED`; never marked `COMPREHENSIVE`.
-- **`BALANCED`** (Default in `config.default.json`): Use for ordinary chapter-to-quiz, notes-to-quiz, and study-material generation.
-  - Full primary source extraction over the complete source.
-  - Reconciles inventory, classifies units, and prioritizes Tier 1 and Tier 2 units for generation.
-  - Skips redundant exhaustive second-pass sweep over every chunk; runs targeted secondary checks for anchor gaps, answer-critical claims, and structured tables.
-  - Retains both independent review streams and all deterministic quality gates.
-  - Default maximum gap-fill rounds: **2**.
-  - Re-reviews only new or modified questions.
-  - Result status is `LIMITED` with explicit reduced verification scope; never marked `COMPREHENSIVE`.
-- **`COMPREHENSIVE`**: Use when the user explicitly requests an exhaustive question bank, comprehensive coverage, or complete source verification.
-  - Full primary extraction AND independent exhaustive second-pass recall sweep across every source chunk (tables, lists, captions, footnotes, numbers, dates).
-  - Global classification and reconciliation, both independent review streams, all 11 quality checks, deduplication.
-  - Default maximum gap-fill rounds: **5**.
-  - Comprehensive tier targets (T1/T2 100%) and cognitive requirements enforced.
-  - Result status may be `COMPREHENSIVE` only when substantiated by passing audit and gate evidence.
+There is exactly ONE processing workflow (FAST). Requested question count,
+speed, and sample-vs-full scope are ordinary parameters, not modes:
 
-Mode selection rules:
-- Explicit exhaustive/full-coverage request → `COMPREHENSIVE`
-- Explicit quick/sample/small practice request → `QUICK`
-- All ordinary chapter and notes conversions → `BALANCED`
-- `processing_mode` is independent from `fidelity_mode` (`SOURCE_BOUND` / `ENHANCED`) and `scope_mode` (`COMPREHENSIVE` / `FIXED_COUNT`).
+- `--count N` (planner + pipeline): honor the request as far as the source
+  supports, highest-priority material first; report any shortfall and the
+  deferred KUs; never manufacture filler to hit N (R7).
+- No usability or depth knobs: extraction is one pass per chunk
+  (`prompts/extract.md`), planning/reconciliation is fully deterministic
+  (`scripts/plan.py`), generation is batched ~12 rows/call, and verification
+  is the single blind review stream (6-12/call) — no separate semantic
+  review pass.
+- Status semantics: a clean single-pass run is honestly `LIMITED`
+  (verification scope: no exhaustive second-pass sweep). `COMPREHENSIVE`
+  is reached only when verified `exhaustive_second_pass` evidence exists
+  (legacy fully-audited runs); the FAST workflow never synthesizes it, so
+  never write it by hand. Substantive failures keep `PARTIAL` with exact
+  reasons — bad review outcomes never lower the bar.
+- Inventory diff (`--diff`) and ignored anchors (`--ignored`) still feed
+  `inventory_check.py`; record the extraction diff honestly when the
+  source understanding pass yields a different reading than the original
+  inventory. There is no mandatory blind re-extraction sweep; targeted
+  re-checks happen when evidence disagrees (anchor gaps, uncertain claims,
+  structured tables).
 
 ## Execution phases (same product, fewer serial calls)
 
-### Phase A — Source understanding
+### Phase A — Source understanding + deterministic planning
 - Parse + deterministic anchors (`ingest.py`, `anchors.py`), then group blocks
-  into section-aware chunks (~5000 input tokens, `batching.extraction_chunk_tokens`; tables intact, deterministic chunk_id).
-- `prompts/extract.md` takes `blocks[]` per chunk; run chunks concurrently
-  (bounded concurrency 3). Merge in chunk order; dedupe overlaps ONLY by stable source identity
-  (block_id + normalized excerpt), never fuzzy-merge distinct facts.
-- In `COMPREHENSIVE` mode, `prompts/second-pass.md` runs an exhaustive independent sweep across all chunks.
-  In `QUICK` and `BALANCED` modes, targeted secondary checks focus on anchor gaps, uncertain claims, and structured tables.
-- Classify per section (`prompts/classify.md`), then GLOBAL reconciliation
-  (`prompts/exam-design.md`) for cross-section clusters, cognitive forms,
-  purposes, type mix. Never finalize per-section blueprints alone.
-- `locate_excerpts.py` + `inventory_check.py` verify every excerpt/region.
+  into section-aware chunks IN CODE (`plan.py` -> `chunks.json`, ~5000 input
+  tokens, `batching.extraction_chunk_tokens`; tables intact, deterministic
+  chunk_id).
+- `prompts/extract.md` takes `block_ids` per chunk and emits extraction +
+  classification + dimensions + tiers + `question_hints` in ONE call per
+  chunk; run chunks concurrently (bounded concurrency 3). Save each result
+  as `chunk_<n>.json`. The planner merges in chunk order; dedupe overlaps
+  ONLY by stable source identity (block_id + normalized excerpt), never
+  fuzzy-merge distinct facts.
+- `locate_excerpts.py` + `inventory_check.py` verify every excerpt/region
+  (recall 100% on non-ignored anchors, density, diff resolved).
+- Reconciliation and blueprinting are DETERMINISTIC (`plan.py`): tier/value
+  prioritization, hints -> blueprint rows bounded by `per_ku_cap` (3),
+  section share cap (2.0x mean, R8), count policy with honest shortfall
+  notes. No global LLM design pass; question_hints during extraction are the
+  only model-shaped planning input, and the planner may drop hints it cannot
+  honor — it never manufactures quota.
 
-### Phase B — Exam design and generation
-- Blueprint only after the inventory is reconciled.
-- Generate up to 8 questions/call (`prompts/generate.md` -> `{"questions": [...]}`),
-  grouped by section, bounded concurrency 4 (`batching.question_concurrency`), STABLE IDs per blueprint row. Statement
-  fields are inlined in the same call (no second statement-engine call).
-- Merge in input order; reject duplicate IDs; retry ONLY the failed batch.
+### Phase B — Generation
+- Batches come from `generation_batches.json` (~12 rows/call,
+  `prompts/generate.md` -> `{"questions": [...]}`, bounded concurrency 4,
+  `batching.question_concurrency`), each with a compact evidence pack (cited
+  KUs + excerpts + confusable partners) so a request is self-contained
+  (no second planning request).
+- STABLE IDs per blueprint row position; statement fields are inlined in
+  the same call (no second statement call). Merge in input order
+  (`plan.py --bank-from`); reject duplicate IDs; retry ONLY the failed
+  batch; record every call via `scripts/llm_trace.py` (see honest metrics).
 
 ### Phase C — Independent verification + deterministic controls
-- TWO separate batched streams (`prompts/review-batch.md` protocol):
-  blind-answer review (`review-blind-batch.md`, PHYSICALLY redacted payload —
-  no answer/answer_key, is_correct, truth fields, covers, prior decisions)
-  and semantic quality review (`review-semantic-batch.md`, full item), up to 6 questions/call (`batching.review_batch_size`).
-  Run both streams concurrently (bounded concurrency 4 each); never merge into one self-review.
+- ONE review stream (`prompts/review-batch.md` -> `review-blind-batch.md`):
+  keyless re-solve + quality flags, 6-12 questions/call
+  (`batching.review_batch_size`), PHYSICALLY redacted payload — no
+  answer/answer_key, is_correct, truth fields, covers, prior decisions;
+  bounded concurrency 4. There is no second "semantic review" stream;
+  semantic quality is owned by the deterministic engines + the reviewer's
+  flags. Never let a stream certify its own key.
 - `scripts/review_batch.py` compares blind answers vs bank key in code; a
-  mismatch excludes the question from coverage (`coverage.py --blind`) until
-  repaired and re-reviewed.
+  mismatch or substantive flag excludes the question from coverage
+  (`coverage.py --blind`) until repaired and re-reviewed.
 - Deterministic `validate_questions.py` + 11-dimension `quality.py` +
   `dedupe.py` run concurrently on the frozen bank; coverage waits for all
-  eligibility reports. Persist both review streams; never re-review unchanged
+  eligibility reports. Persist the review stream; never re-review unchanged
   questions; re-review every new/modified one.
 
-### Phase D — Targeted gap closure and delivery
-- Gap-fill is event-driven (`prompts/gap-fill.md`): one compact manifest/round
-  (uncovered T1/T2, missing forms/purposes/clusters, failed IDs, accepted
-  status); batched candidates; validate/review ONLY new/changed items;
-  recompute audit+gate; stop on COMPREHENSIVE (in COMPREHENSIVE mode), on no progress, or at mode-specific max rounds
-  (1 for QUICK, 2 for BALANCED, 5 for COMPREHENSIVE). No full-bank LLM audit pass: `audit.py`/`gate.py` are authoritative
-  and the model never overrides them.
+### Phase D — One bounded repair round + delivery
+- Failures (blind mismatches, validation/quality rejects, duplicate flags,
+  anchor misses) converge into `repair.json`; `prompts/repair.md` fixes or
+  retires ONLY queued questions, then repaired items re-run validate +
+  quality + blind review. Exactly ONE round (`max_repair_rounds: 1`); no
+  gap-fill loop. `audit.py`/`gate.py` are authoritative and the model never
+  overrides them; the final status reports what survived, honestly.
 - Repair locally: `repair_queue.json` carries exact reasons + excerpts + KU
   mappings; max `max_repair_retries: 2`; excluded items stay as coverage gaps.
   Unrecoverable stage failures still abort.
@@ -272,9 +308,18 @@ Mode selection rules:
 - Safe parallelism only: validate/quality/dedupe run concurrently after inputs freeze
   (coverage waits for all three); web + pdf run concurrently after the package is
   immutable. Never build PDFs when not requested.
-- Metrics (`run_metrics.json`): stage durations, counts, chunks/batches, cache
-  hits/misses, rejected/repaired/accepted/excluded, gap rounds, html/pdf times.
-  Model-call counts marked unavailable when the orchestrator cannot observe them.
+- Metrics (`run_metrics.json`) are truthful: stage durations, chunks/batches
+  (`work_counts`), cache hits/misses, validated/rejected/accepted/retired,
+  html/pdf times, and the model layer split (`time.model_s` vs
+  `time.python_s`). Every observable model call is recorded to
+  `llm_trace.jsonl` via the CLI
+  `python scripts/llm_trace.py --trace <run>/llm_trace.jsonl --stage <stage>
+  --batch <batch-id> --fingerprint <fp> --duration <s> [--retries N]
+  [--cache-hit] [--failure] [--input-tokens N --output-tokens N]`; the
+  summary reports per-stage calls/durations/retries/cache hits and token
+  counts ONLY when the provider exposed them — otherwise token counts read
+  `"unavailable"` (never fabricated). No call recorded → `model_calls` is
+  explicitly `"unavailable (no llm_trace.jsonl recorded…)"`.
 
 ## Field contracts (must match schemas/*.json)
 
@@ -296,14 +341,20 @@ Mode selection rules:
 - Question `type` enum: factual_mcq, statement_based, assertion_reason, match_pairs,
   elimination_mcq, one_liner_mcq, data_interpretation_mcq, reasoning_mcq, pedagogy_mcq,
   sequence_mcq, true_false (2 options allowed).
-- Gate: COMPREHENSIVE iff tier1=tier2=100% validated, recall at threshold, diff resolved,
-  no density/downgrade/skew/dup flags, no limitations, plus (new-engine banks) required
-  cognitive forms present, no critical KU only weakly tested, required exam purposes present,
-  high-priority confusion clusters addressed. Any limitation → at most LIMITED.
-  `gate.py` recomputes from the audit body; hand-edited status headers are ignored.
+- Gate: LIMITED-clean / PARTIAL-with-substance / COMPREHENSIVE-with-evidence.
+  A clean single-pass run (tier1=tier2=100% validated, recall at threshold,
+  diff resolved, no density/downgrade/skew/dup flags, no limitations, and —
+  new-engine banks — required cognitive forms present, no critical KU only
+  weakly tested, required exam purposes present, high-priority confusion
+  clusters addressed) is LIMITED: verification scope is a single blind pass.
+  COMPREHENSIVE requires additionally verified `exhaustive_second_pass`
+  evidence with every review stream completed; the FAST workflow never
+  fabricates it. Any limitation → at most LIMITED.
+  `gate.py` recomputes from the audit body; hand-edited status headers are
+  ignored.
   Difficulty = reasoning demand (easy recall / medium relation-distinction / hard statement-elimination-integration).
-- Modes: fidelity `SOURCE_BOUND` (default) | `ENHANCED` (external tagged+shown);
-  scope `COMPREHENSIVE` (default) | `FIXED_COUNT` (exact N, honest coverage report).
+- Fidelity: `SOURCE_BOUND` (default) | `ENHANCED` (external tagged+shown).
+  There are no processing modes; the requested count is a parameter.
 - Never invent facts (R4); never claim 100% without script output (R12).
 
 ## Revision engine (Phase 2)

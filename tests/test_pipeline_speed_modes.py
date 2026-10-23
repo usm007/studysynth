@@ -1,27 +1,25 @@
-"""Comprehensive Regression and Parity Tests for Pipeline Speed & Processing Modes.
+"""Regression and Parity Tests for the Single FAST Pipeline Workflow.
 
 Covers:
-1. Processing-mode resolution and precedence (CLI > config > BALANCED default).
-2. BALANCED as default for ordinary conversion.
-3. Explicit exhaustive request resolving to COMPREHENSIVE.
-4. QUICK and BALANCED never receiving exhaustive-verification status (LIMITED gate).
-5. COMPREHENSIVE retaining complete workflow.
-6. Processing mode independence from fidelity_mode and scope_mode.
-7. Cache reuse when all relevant fingerprints match.
-8. Cache invalidation when source text changes.
-9. Cache invalidation when schemas, configs, or helper code changes.
-10. No invalidation of upstream stages when downstream artifacts change.
-11. Correct --redo descendant invalidation.
-12. Safe atomic writes and recovery from interrupted writes.
-13. Deterministic batch merge order under concurrent completion.
-14. Content-addressed resumption: retrying only failed/invalidated batches.
-15. Exact parity of deduplication results.
-16. Exact parity of quality evaluation and 11 dimensions.
-17. Exact parity of anchor matching and recall reporting.
-18. Physical blind-review payload redaction.
-19. Both review streams independent in QUICK, BALANCED, COMPREHENSIVE.
-20. Honest metrics when model telemetry is unavailable.
-21. Output integrity and schema compliance.
+1. One FAST workflow: no selectable processing modes anywhere in the active path.
+2. Evidence-driven gate: COMPREHENSIVE requires verified exhaustive-sweep evidence.
+3. Single-pass verification scope is reported honestly (LIMITED/PARTIAL, never over-promoted).
+4. No profile required to run the pipeline.
+5. Cache reuse when all relevant fingerprints match.
+6. Cache invalidation when source text changes.
+7. Cache invalidation when schemas, configs, or helper code changes.
+8. No invalidation of upstream stages when downstream artifacts change.
+9. Correct --redo descendant invalidation.
+10. Safe atomic writes and recovery from interrupted writes.
+11. Deterministic batch merge order under concurrent completion.
+12. Content-addressed resumption: retrying only failed/invalidated batches.
+13. Exact parity of deduplication results.
+14. Exact parity of quality evaluation and 11 dimensions.
+15. Exact parity of anchor matching and recall reporting.
+16. Physical blind-review payload redaction.
+17. Single independent review stream (no second semantic stream in the routine path).
+18. Honest metrics when model telemetry is unavailable.
+19. Output integrity and schema compliance.
 """
 import copy
 import json
@@ -58,46 +56,60 @@ def run_cmd(*args, timeout=120):
     return p
 
 
-class TestProcessingModes(unittest.TestCase):
-    """Items 1-6: Processing modes, defaults, precedence, and gate enforcement."""
+class TestSingleWorkflowPolicy(unittest.TestCase):
+    """One FAST workflow: no selectable processing modes; evidence-driven gate."""
 
-    def test_default_config_is_balanced(self):
+    def setUp(self):
+        self.clean_audit = {
+            "anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
+            "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
+            "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 10},
+            "skew_flags": [], "duplicate_flags": [], "limitations": []
+        }
+
+    def test_default_config_has_no_processing_mode(self):
         cfg = lib_common.load_json(str(ROOT / "config.default.json"))
-        self.assertEqual(cfg.get("processing_mode"), "BALANCED")
+        self.assertNotIn("processing_mode", cfg)
+        self.assertEqual(cfg.get("max_repair_rounds"), 1)
 
-    def test_gate_rejects_comprehensive_in_balanced_mode(self):
-        audit = {"anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
-                 "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
-                 "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 10},
-                 "skew_flags": [], "duplicate_flags": [], "limitations": []}
-        status, reasons = gate_mod.decide(audit, 1.0, processing_mode="BALANCED")
+    def test_pipeline_cli_has_no_processing_mode_flag(self):
+        out = run_cmd("scripts/pipeline.py", "--help")
+        self.assertNotIn("--processing-mode", out.stdout + out.stderr)
+
+    def test_clean_audit_without_evidence_is_limited(self):
+        status, reasons = gate_mod.decide(self.clean_audit, 1.0)
         self.assertEqual(status, "LIMITED")
-        self.assertTrue(any("BALANCED" in r for r in reasons))
+        self.assertTrue(any("verification" in r for r in reasons))
 
-    def test_gate_rejects_comprehensive_in_quick_mode(self):
-        audit = {"anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
-                 "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
-                 "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 10},
-                 "skew_flags": [], "duplicate_flags": [], "limitations": []}
-        status, reasons = gate_mod.decide(audit, 1.0, processing_mode="QUICK")
+    def test_clean_audit_with_single_pass_evidence_is_limited(self):
+        ev = {"exhaustive_second_pass": False, "missing_reviews": False}
+        status, reasons = gate_mod.decide(self.clean_audit, 1.0, evidence=ev)
         self.assertEqual(status, "LIMITED")
-        self.assertTrue(any("QUICK" in r for r in reasons))
+        self.assertTrue(any("verification scope reduced" in r for r in reasons))
 
-    def test_gate_allows_comprehensive_only_in_comprehensive_mode(self):
-        audit = {"anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
-                 "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
-                 "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 10},
-                 "skew_flags": [], "duplicate_flags": [], "limitations": []}
-        status, reasons = gate_mod.decide(audit, 1.0, processing_mode="COMPREHENSIVE")
+    def test_substantive_failure_is_partial_under_single_pass_evidence(self):
+        audit = dict(self.clean_audit,
+                     coverage_by_tier={"1": {"pct_covered": 85.0}, "2": {"pct_covered": 100.0}})
+        ev = {"exhaustive_second_pass": False, "missing_reviews": False}
+        status, reasons = gate_mod.decide(audit, 1.0, evidence=ev)
+        self.assertEqual(status, "PARTIAL")
+        self.assertTrue(any("tier 1" in r for r in reasons))
+
+    def test_comprehensive_requires_exhaustive_evidence_and_reviews(self):
+        ev_missing_sweep = {"exhaustive_second_pass": False}
+        status, _ = gate_mod.decide(self.clean_audit, 1.0, evidence=ev_missing_sweep)
+        self.assertEqual(status, "LIMITED")
+
+        ev_missing_reviews = {"exhaustive_second_pass": True, "missing_reviews": True}
+        status, reasons = gate_mod.decide(self.clean_audit, 1.0, evidence=ev_missing_reviews)
+        self.assertEqual(status, "LIMITED")
+        self.assertTrue(any("review" in r for r in reasons))
+
+    def test_comprehensive_with_verified_legacy_evidence(self):
+        ev = {"exhaustive_second_pass": True, "missing_reviews": False}
+        status, reasons = gate_mod.decide(self.clean_audit, 1.0, evidence=ev)
         self.assertEqual(status, "COMPREHENSIVE")
         self.assertEqual(reasons, [])
-
-    def test_processing_mode_independent_from_fidelity_and_scope(self):
-        cfg = lib_common.load_json(str(ROOT / "config.default.json"))
-        # Verify independence: fidelity_mode and scope_mode coexist independently
-        self.assertEqual(cfg.get("fidelity_mode"), "SOURCE_BOUND")
-        self.assertEqual(cfg.get("scope_mode"), "COMPREHENSIVE")
-        self.assertEqual(cfg.get("processing_mode"), "BALANCED")
 
 
 class TestCacheInvalidationAndReuse(unittest.TestCase):
@@ -118,8 +130,7 @@ class TestCacheInvalidationAndReuse(unittest.TestCase):
                      "--inventory", "examples/sample_inventory.json",
                      "--bank", "examples/sample_bank.json",
                      "--ignored", "tests/fixtures/e2e_ignored_anchors.json",
-                     "--diff", "tests/fixtures/e2e_inventory_diff.json",
-                     "--processing-mode", "BALANCED")
+                     "--diff", "tests/fixtures/e2e_inventory_diff.json")
         self.assertEqual(r1.returncode, 0, r1.stdout + r1.stderr)
 
         man_path = self.tmp / run_id / "artifact_manifest.json"
@@ -139,8 +150,7 @@ class TestCacheInvalidationAndReuse(unittest.TestCase):
                      "--inventory", "examples/sample_inventory.json",
                      "--bank", str(mod_bank),
                      "--ignored", "tests/fixtures/e2e_ignored_anchors.json",
-                     "--diff", "tests/fixtures/e2e_inventory_diff.json",
-                     "--processing-mode", "BALANCED")
+                     "--diff", "tests/fixtures/e2e_inventory_diff.json")
         self.assertEqual(r2.returncode, 0, r2.stdout + r2.stderr)
 
         state2 = lib_common.load_json(str(self.tmp / run_id / "pipeline_state.json"))
@@ -287,7 +297,7 @@ class MockArgs:
     """Helper to mock command-line arguments for pipeline fingerprint testing."""
     def __init__(self, **kwargs):
         for k in ("source", "profile", "config", "inventory", "bank", "ignored", "diff",
-                  "count", "redo", "mode", "processing_mode", "package", "web", "pdf",
+                  "count", "redo", "mode", "package", "web", "pdf",
                   "full", "deliver", "delivery_dir", "delivery_mode"):
             setattr(self, k, None)
         for k, v in kwargs.items():
@@ -404,25 +414,25 @@ class TestStageFingerprintDependencies(unittest.TestCase):
         self.assertNotEqual(pipeline_mod.compute_stage_fingerprint("gate", self.R, self.F, a, self.cfg),
                             pipeline_mod.compute_stage_fingerprint("gate", self.R, self.F, a, cfg2))
 
-    def test_processing_mode_mutation(self):
-        """Changing processing mode invalidates gate and quality without invalidating extraction."""
-        a_bal = MockArgs(source=self.src, profile=self.prof, config=self.cfg_file,
-                         inventory=self.inv, bank=self.bank, processing_mode="BALANCED")
-        a_comp = MockArgs(source=self.src, profile=self.prof, config=self.cfg_file,
-                          inventory=self.inv, bank=self.bank, processing_mode="COMPREHENSIVE")
+    def test_profile_mutation(self):
+        """An optional style profile changes authoring stages, never extraction."""
+        a_no = MockArgs(source=self.src, profile=None, config=self.cfg_file,
+                        inventory=self.inv, bank=self.bank)
+        a_p = MockArgs(source=self.src, profile=self.prof, config=self.cfg_file,
+                       inventory=self.inv, bank=self.bank)
 
-        # Ingest, anchors, check, validate, dedupe unchanged
-        self.assertEqual(pipeline_mod.compute_stage_fingerprint("ingest", self.R, self.F, a_bal, self.cfg),
-                         pipeline_mod.compute_stage_fingerprint("ingest", self.R, self.F, a_comp, self.cfg))
-        self.assertEqual(pipeline_mod.compute_stage_fingerprint("anchors", self.R, self.F, a_bal, self.cfg),
-                         pipeline_mod.compute_stage_fingerprint("anchors", self.R, self.F, a_comp, self.cfg))
-        self.assertEqual(pipeline_mod.compute_stage_fingerprint("validate", self.R, self.F, a_bal, self.cfg),
-                         pipeline_mod.compute_stage_fingerprint("validate", self.R, self.F, a_comp, self.cfg))
-        # Gate and quality changed
-        self.assertNotEqual(pipeline_mod.compute_stage_fingerprint("gate", self.R, self.F, a_bal, self.cfg),
-                            pipeline_mod.compute_stage_fingerprint("gate", self.R, self.F, a_comp, self.cfg))
-        self.assertNotEqual(pipeline_mod.compute_stage_fingerprint("quality", self.R, self.F, a_bal, self.cfg),
-                            pipeline_mod.compute_stage_fingerprint("quality", self.R, self.F, a_comp, self.cfg))
+        # Ingest and anchors do not depend on the optional profile
+        self.assertEqual(pipeline_mod.compute_stage_fingerprint("ingest", self.R, self.F, a_no, self.cfg),
+                         pipeline_mod.compute_stage_fingerprint("ingest", self.R, self.F, a_p, self.cfg))
+        self.assertEqual(pipeline_mod.compute_stage_fingerprint("anchors", self.R, self.F, a_no, self.cfg),
+                         pipeline_mod.compute_stage_fingerprint("anchors", self.R, self.F, a_p, self.cfg))
+        # Authoring-quality stages do honor an explicit profile
+        self.assertNotEqual(pipeline_mod.compute_stage_fingerprint("validate", self.R, self.F, a_no, self.cfg),
+                            pipeline_mod.compute_stage_fingerprint("validate", self.R, self.F, a_p, self.cfg))
+        self.assertNotEqual(pipeline_mod.compute_stage_fingerprint("quality", self.R, self.F, a_no, self.cfg),
+                            pipeline_mod.compute_stage_fingerprint("quality", self.R, self.F, a_p, self.cfg))
+        self.assertNotEqual(pipeline_mod.compute_stage_fingerprint("audit", self.R, self.F, a_no, self.cfg),
+                            pipeline_mod.compute_stage_fingerprint("audit", self.R, self.F, a_p, self.cfg))
 
     def test_unrelated_output_option_mutation(self):
         """Changing delivery options does not invalidate core processing stages."""
@@ -528,76 +538,61 @@ class TestAuthoritativeGateVerification(unittest.TestCase):
     """Section 4: Authoritative quality gate and verification evidence rules."""
 
     def test_comprehensive_passes_with_verified_sweep_evidence(self):
-        """Comprehensive mode passes when evidence shows exhaustive second-pass completed."""
+        """Evidence showing an exhaustive second-pass supports COMPREHENSIVE."""
         audit = {
             "anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
             "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
             "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 20},
             "skew_flags": [], "duplicate_flags": [], "limitations": []
         }
-        ev = {"second_pass_sweep": True, "missing_reviews": False}
-        status, reasons = gate_mod.decide(audit, 1.0, processing_mode="COMPREHENSIVE", evidence=ev)
+        ev = {"exhaustive_second_pass": True, "missing_reviews": False}
+        status, reasons = gate_mod.decide(audit, 1.0, evidence=ev)
         self.assertEqual(status, "COMPREHENSIVE")
         self.assertEqual(reasons, [])
 
     def test_comprehensive_rejects_missing_second_pass_evidence(self):
-        """Comprehensive mode cannot pass comprehensively if second-pass sweep is missing."""
+        """Single-pass workflow cannot claim comprehensive completeness."""
         audit = {
             "anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
             "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
             "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 20},
             "skew_flags": [], "duplicate_flags": [], "limitations": []
         }
-        ev = {"second_pass_sweep": False}
-        status, reasons = gate_mod.decide(audit, 1.0, processing_mode="COMPREHENSIVE", evidence=ev)
+        ev = {"exhaustive_second_pass": False}
+        status, reasons = gate_mod.decide(audit, 1.0, evidence=ev)
         self.assertEqual(status, "LIMITED")
-        self.assertTrue(any("second-pass sweep" in r for r in reasons))
+        self.assertTrue(any("verification scope reduced" in r for r in reasons))
 
     def test_comprehensive_rejects_missing_mandatory_reviews(self):
-        """Comprehensive mode cannot pass comprehensively if mandatory review stream failed."""
+        """Verification evidence with missing review streams cannot certify the run."""
         audit = {
             "anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
             "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
             "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 20},
             "skew_flags": [], "duplicate_flags": [], "limitations": []
         }
-        ev = {"second_pass_sweep": True, "missing_reviews": True}
-        status, reasons = gate_mod.decide(audit, 1.0, processing_mode="COMPREHENSIVE", evidence=ev)
+        ev = {"exhaustive_second_pass": True, "missing_reviews": True}
+        status, reasons = gate_mod.decide(audit, 1.0, evidence=ev)
         self.assertEqual(status, "LIMITED")
         self.assertTrue(any("mandatory review" in r for r in reasons))
-
-    def test_balanced_and_quick_modes_always_limited(self):
-        """Quick and Balanced modes receive LIMITED even when metrics are 100%."""
-        audit = {
-            "anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
-            "coverage_by_tier": {"1": {"pct_covered": 100.0}, "2": {"pct_covered": 100.0}},
-            "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 20},
-            "skew_flags": [], "duplicate_flags": [], "limitations": []
-        }
-        for pm in ("BALANCED", "QUICK"):
-            status, reasons = gate_mod.decide(audit, 1.0, processing_mode=pm)
-            self.assertEqual(status, "LIMITED")
-            self.assertTrue(any(pm in r for r in reasons))
 
     def test_genuine_substantive_failure_never_overwritten_to_limited(self):
         """Substantive audit failures (e.g. coverage gaps) remain PARTIAL, never overwritten to LIMITED."""
         # Tier 1 coverage only 85%
+        ev = {"exhaustive_second_pass": False, "missing_reviews": False}
         audit_cov_fail = {
             "anchor_recall": 1.0, "diff_status": "resolved", "density_flags": [],
             "coverage_by_tier": {"1": {"pct_covered": 85.0}, "2": {"pct_covered": 100.0}},
             "validation_rates": {"pct_validated": 100.0}, "ku_counts": {"total": 20},
             "skew_flags": [], "duplicate_flags": [], "limitations": []
         }
-        status_b, reasons_b = gate_mod.decide(audit_cov_fail, 1.0, processing_mode="BALANCED")
-        self.assertEqual(status_b, "PARTIAL", "Balanced mode must preserve PARTIAL status on coverage failure")
-
-        status_q, reasons_q = gate_mod.decide(audit_cov_fail, 1.0, processing_mode="QUICK")
-        self.assertEqual(status_q, "PARTIAL", "Quick mode must preserve PARTIAL status on coverage failure")
+        status_b, reasons_b = gate_mod.decide(audit_cov_fail, 1.0, evidence=ev)
+        self.assertEqual(status_b, "PARTIAL", "Coverage failure must preserve PARTIAL status")
 
         # Anchor recall failure
         audit_rec_fail = dict(audit_cov_fail, coverage_by_tier={"1": {"pct_covered": 100.0}}, anchor_recall=0.75)
-        status_r, _ = gate_mod.decide(audit_rec_fail, 1.0, processing_mode="BALANCED")
-        self.assertEqual(status_r, "PARTIAL", "Balanced mode must preserve PARTIAL status on recall failure")
+        status_r, _ = gate_mod.decide(audit_rec_fail, 1.0, evidence=ev)
+        self.assertEqual(status_r, "PARTIAL", "Recall failure must preserve PARTIAL status")
 
 
 class TestConcurrencyAndRetryLimits(unittest.TestCase):

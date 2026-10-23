@@ -49,26 +49,33 @@ The ingestion engine (`scripts/ingest.py`) parses, normalizes, and extracts stru
 
 ## 3. Pipeline Sequence
 
-The pipeline transforms source documents into verified study packages through sequential checkpoints:
+The pipeline transforms source documents into verified study packages through sequential checkpoints. It is ONE workflow (no QUICK/BALANCED/COMPREHENSIVE processing modes): planning, reconciliation and batching are deterministic code; model calls are one extraction pass per chunk, batched generation (~12 questions/call), and the single blind review stream (6–12 redacted items/call) plus at most one targeted repair round. An exam profile is optional style input only.
 
 ```
 DOCUMENT
-  ↓ [ingest.py + naming.py]
-DOCUMENT STRUCTURE & CLEAN METADATA (Dates, numbers, articles, entities, tables)
-  ↓ [extract.md + locate_excerpts.py]
-EXHAUSTIVE KNOWLEDGE INVENTORY (KUs, Tiers 1-4, confusion clusters, verbatim excerpts)
-  ↓ [inventory_check.py]
-COMPLETENESS & DENSITY AUDIT (100% anchor recall, unresolved diff resolution)
-  ↓ [exam-design.md + generate.md]
-QUESTION BANK (Explicit exam purposes, distractors with confusion types, alteration types)
+  ↓ [ingest.py + naming.py + anchors.py]
+DOCUMENT STRUCTURE, ANCHORS & CLEAN METADATA (Dates, numbers, articles, entities, tables)
+  ↓ [plan.py: deterministic section-aware chunking]
+EXTRACTION CHUNKS (chunks.json)
+  ↓ [extract.md — ONE pass per chunk: extract + classify + tier + question hints]
+KNOWLEDGE INVENTORY (KUs, Tiers 1-4, confusion clusters, verbatim excerpts)
+  ↓ [locate_excerpts.py + plan.py merge/reconcile]
+RECONCILED INVENTORY + BLUEPRINT (coverage_plan.json, per-KU cap, section share cap, count policy)
+  ↓ [generation_batches.json: ~12 rows/call with evidence packs]
+  ↓ [generate.md]
+QUESTION BANK (batch_<n>.json → question_bank.json, explicit exam purposes, confusion-typed distractors)
   ↓ [validate_questions.py]
 DETERMINISTIC VALIDATION (Single key, key consistency, option count, source provenance)
   ↓ [quality.py]
 QUESTION QUALITY EVALUATION (11 dimensions: accuracy, distractors, leaks, difficulty fit, purpose fit, rubric A-D)
+  ↓ [review-batch.md → review-blind-batch.md: redacted keyless re-solve + code comparison]
+BLIND REVIEW (single independent stream; mismatches/flags → repair.json)
+  ↓ [repair.md — ONE bounded round, re-validated + re-reviewed]
+REPAIR OUTCOMES (fixed items re-credited; retired items stay excluded)
   ↓ [coverage.py + dedupe.py]
 COVERAGE & REDUNDANCY AUDIT (Tier 1/2 content coverage, cognitive coverage, semantic dedupe)
   ↓ [audit.py + gate.py]
-AUDIT & FINAL GATE (COMPREHENSIVE vs LIMITED vs PARTIAL)
+AUDIT & FINAL GATE (honest LIMITED / PARTIAL / evidence-backed COMPREHENSIVE)
   ↓ [package.py]
 PACKAGE ASSEMBLY (Validated + Quality-Accepted questions only)
   ↓ [build_web.py + dashboard.py + desktop_shortcut.py + build_pdf.py]
@@ -83,11 +90,11 @@ Run all deterministic stages at once from a source document, inventory, and ques
 
 ```bash
 # Full pipeline from source document to interactive web app & verified PDFs
+# (--profile is optional style input; omit it for generalized authoring)
 python scripts/pipeline.py \
   --source examples/sample_source.md \
   --inventory examples/sample_inventory.json \
   --bank examples/sample_bank.json \
-  --profile profiles/APSC_PRELIMS.json \
   --config config.default.json \
   --run-id my_run \
   --build-dir build \
@@ -102,7 +109,11 @@ Generated outputs in `build/my_run/`:
 - `coverage_matrix.json`: Content coverage and cognitive coverage breakdown
 - `dedupe_report.json`: Exact and semantic duplicate detection report
 - `audit_report.json`: Global audit of content, cognitive coverage, shares, and clusters
-- `gate.json`: Authoritative gate status (`COMPREHENSIVE`, `PARTIAL`, or `LIMITED`)
+- `gate.json`: Authoritative gate status (`LIMITED` for a clean single-pass
+  run, `PARTIAL` when substance fails, `COMPREHENSIVE` only with verified
+  exhaustive-sweep evidence)
+- `run_metrics.json`: truthful stage/work/time/call metrics
+  (`llm_trace.jsonl` records the observable model calls)
 - `quiz_package.json`: Packaged delivery artifact with quality-accepted questions
 - `sample-source-module.html` & `quiz.html`: Standalone offline study workspace
 - `output/index.html`: Master StudySynth library dashboard
@@ -113,17 +124,9 @@ Generated outputs in `build/my_run/`:
 
 ---
 
-## 5. Testing & Verification
+## 5. Verification
 
-Run the entire test suite (284 unit and integration tests):
-```bash
-python tests/run_all.py
-```
-
-Run the authoritative release gate check:
-```bash
-python scripts/release_gate.py
-```
+See `SKILL.md` → “Verify the artifact (dry run)” for the supported end-to-end check. It runs the bundled starter bank through packaging, HTML, and PDF generation and reports the gate result.
 
 ---
 

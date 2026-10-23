@@ -1,81 +1,93 @@
-# generate — competitive-exam question authoring (batched)
+# generate — competitive-exam question authoring (batched, ~12 per call)
 
-Role: question author. Write serious exam-style items, 6-8 per call.
-This is a study instrument, not entertainment.
+Role: question author. Write serious exam-style items, ~12 per call
+(`batching.question_batch_size`). This is a study instrument, not
+entertainment.
 
-Profile style context: when the resolved profile contains `question_style_profile`,
-prepend the output of
+Optional style context: when an exam profile is supplied AND it contains
+`question_style_profile`, prepend the output of
 `python scripts/profile_style.py --profile <profile.json> --stage generate`
-to this prompt. Apply its archetype, classroom, distractor and language rules
-in addition to the generic contract below. Profiles without that block add
-nothing.
+to this prompt. Profiles are style input only — they never change the
+pipeline, the count or the gates. Without a profile, author to the generic
+competitive-exam contract below.
 
-Inputs: `rows[]` (6-8 blueprint rows: ku_id, qtype, difficulty, purpose,
-cognitive_level, archetype) + cited KUs + profile style. Group rows by section or related
-KUs when that improves source context. Batch size is configurable
-(`batching.question_batch_size`, default 8, bounded concurrency up to 4, subject to token limits).
+Inputs: `batches[]` from `generation_batches.json`: each batch is
+`{batch_id, rows[], evidence}` where `rows[]` are blueprint rows
+(ku_id, qtype, archetype, difficulty, purpose, primary_skill,
+cognitive_level, target_knowledge_units, confusion_cluster,
+passage_required) and `evidence` carries the compact cited KUs
+(statement + verbatim excerpt + source refs + confusable partners). Every
+row in the batch must be authored; there are no second design requests.
 
-Steps (for EVERY question, full contract retained):
-1. Write stem + exactly `options_per_question` options, one correct.
-   If the row names an `archetype`, author to that archetype. Keep a concrete
-   classroom stem only when the archetype is classroom_situation; test
-   conceptual_subject_content directly.
-   Prioritize UPSC/PSC patterns: statement-based sets ("Consider the following
-   statements... Which ... is/are correct?"), elimination MCQs with close
-   options, distinction questions on confusable facts, association pairs
-   (person↔work, institution↔function, article↔provision, place↔feature,
-   year↔event), chronology only when meaningful, exception questions on
-   carefully worded exceptions, integrated questions only where two or more
-   source-supported KUs have a real relationship (never force integration).
-2. Set `knowledge_units[{ku_id, role}]` (primary=full credit, secondary=partial,
-   distractor_basis=zero), `source[]`, `explanation`, `difficulty`,
-   `difficulty_reason`, `purpose`, `primary_skill`, `cognitive_level`,
-   `revision_priority`, `confusion_cluster`, `target_knowledge_units`, `origin`.
-   When the profile defines archetypes, also set `archetype`, `content_kind`,
-   `classroom_context_required` and `passage` (string or null).
-3. Distractors: prefer confusable KUs, adjacent dates/values, related concepts,
-   reversed associations, partial truths, scope changes, category swaps,
-   causal reversals. Mark `distractor_origin`, `confusion_type`, `ku_ref` and
-   `distractor_purpose` (confusable_fact | adjacent_value | partial_truth |
-   reversed_relation | wrong_category | wrong_entity | wrong_date |
-   scope_error | causal_reversal). No nonsense distractors.
-   For profile-guided banks: every option must be plausible; no punitive,
-   absurd or joke options; no "all/none of the above"; and the key must not be
-   identifiable by being longer or more specific than every distractor.
+Steps (for EVERY row, full contract retained):
+1. Write stem + exactly `options_per_question` options, one correct. If the
+   row names an `archetype`, author to that archetype. Prioritize competitive
+   patterns: statement-based sets ("Consider the following statements… Which
+   … is/are correct?"), elimination MCQs with close options, distinction
+   questions on confusable facts, association pairs, chronology only when
+   meaningful, exception questions on carefully worded exceptions,
+   integrated questions only where two or more source-supported KUs have a
+   real relationship (never force integration).
+2. Set `knowledge_units[{ku_id, role}]` (primary=full credit,
+   secondary=partial, distractor_basis=zero), `source[]`, `explanation`,
+   `difficulty`, `difficulty_reason`, `purpose`, `primary_skill`,
+   `cognitive_level`, `revision_priority`, `confusion_cluster`,
+   `target_knowledge_units`, `origin`. When the profile defines archetypes,
+   also set `archetype`, `content_kind`, `classroom_context_required` and
+   `passage` (string or null).
+3. Distractors: prefer confusable KUs, adjacent dates/values, related
+   concepts, reversed associations, partial truths, scope changes, category
+   swaps, causal reversals. Mark `distractor_origin`, `confusion_type`,
+   `ku_ref` and `distractor_purpose` (confusable_fact | adjacent_value |
+   partial_truth | reversed_relation | wrong_category | wrong_entity |
+   wrong_date | scope_error | causal_reversal). No nonsense distractors.
+   Every option must be plausible; no punitive, absurd or joke options; no
+   "all/none of the above"; and the key must not be identifiable by being
+   longer or more specific than every distractor.
 3b. PROFILE-SPECIFIC AUTHORING (when supplied): follow the profile's
    classroom-scenario rules, answer rule, language/passage rule and
-   assertion-reason payload rule. A classroom scenario needs a concrete class,
-   learner and subject/topic; subject pedagogy must name the subject and a
-   specific teaching decision; language_comprehension must include a real
-   `passage`; assertion-reason items need substantive statements. One
+   assertion-reason payload rule. A classroom scenario needs a concrete
+   class, learner and subject/topic; subject pedagogy must name the subject
+   and a specific teaching decision; language_comprehension must include a
+   real `passage`; assertion-reason items need substantive statements. One
    defensible best answer only.
-4. Explanation must teach: correct answer + why it is correct + why the closest
-   alternatives are wrong + source ref. Add `memory_aid`, `hint` (no leak),
-   `misconception` where useful. Keep it tight, not a textbook paragraph.
-5. STATEMENT QUESTIONS ARE COMPLETE IN THIS CALL (statement-engine inlined):
-   emit 2-4 `statements[]` each with `text, truth_value, ku_basis`; false
-   statements declare `alteration` + `alteration_type` (negation, value_swap,
-   entity_swap, date_shift, scope_change, causality_flip, partial_truth,
+4. Explanation must teach: correct answer + why it is correct + why the
+   closest alternatives are wrong + source ref. Add `memory_aid`, `hint`
+   (no leak), `misconception` where useful. Keep it tight, not a textbook
+   paragraph.
+5. STATEMENT QUESTIONS ARE COMPLETE IN THIS CALL: emit 2-4 `statements[]`
+   each with `text, truth_value, ku_basis`; false statements declare
+   `alteration` + `alteration_type` (negation, value_swap, entity_swap,
+   date_shift, scope_change, causality_flip, partial_truth,
    overgeneralization, fabrication). Every statement traceable to one KU.
    Design options so key logic is unique (checked by `stmt_check`); prefer
    close elimination patterns. Set `purpose=statement_evaluation`,
-   `cognitive_level` = distinction|analysis. Do NOT make a second call just to
-   populate statement fields.
-6. Keep SOURCE_BOUND default: every tested claim traceable to source excerpts.
-   Difficulty justified by reasoning demand; genuinely useful explanation;
-   statement truth values + substantive false-statement alterations;
+   `cognitive_level` = distinction|analysis. There is no separate
+   statement-engine call.
+6. Keep SOURCE_BOUND default: every tested claim traceable to source
+   excerpts in the batch evidence. Difficulty justified by reasoning demand;
+   genuinely useful explanation; substantive false-statement alterations;
    confusion-cluster and revision metadata where required.
 
-Output JSON shape: `{"questions": [Question]}` (array, one entry per input row,
-same order as input rows). Every entry validates against question schema.
-Assign STABLE question IDs deterministically from the blueprint row
-(e.g. row index -> `Q-NNNN`); never reuse an ID across batches.
+Output JSON shape per batch: `{"questions": [Question]}` — array, one entry
+per input row, same order as input rows. Every entry validates against
+`schemas/question.schema.json`. Assign STABLE question IDs deterministically
+from the batch/row position (batch `GB-003` row 5 -> `Q-0029`-style ordinal
+mapping across the planned order); never reuse an ID across batches. Save
+each batch result as `batch_<n>.json` (`batch_1.json`, `batch_2.json`, …)
+in the run directory; `scripts/plan.py --bank-from` merges them
+deterministically.
 
 Rules: R4, R5 (single correct), R6 (distractor discipline), R9 (no trivia),
-R10 (every item teaches/discriminates/diagnoses).
+R10 (every item teaches/discriminates/diagnoses), R7 (honored count comes
+from the plan; never pad). Generate only the planned rows — fewer/deferred
+rows are the planner's decision, not yours to reinterpret.
 
-Execution: run independent batches concurrently (bounded concurrency 3).
-Validate each batch response against the schema; reject duplicate question IDs
-within/across batches; merge in DETERMINISTIC input order (not completion
-order). On malformed JSON or transient model error, RETRY ONLY the affected
-batch — never regenerate successful batches.
+Execution: run independent batches concurrently (bounded concurrency 4).
+If a batch result is saved, record the call for the metrics layer:
+`python scripts/llm_trace.py --trace <run>/llm_trace.jsonl --stage generate
+--batch GB-00N --fingerprint <batch_fingerprint> --duration <s>
+--input-tokens <n> --output-tokens <n>` (when the provider exposes token
+counts). Validate each batch response against the schema; reject duplicate
+question IDs within/across batches. On malformed JSON or transient model
+error, RETRY ONLY the affected batch — never regenerate successful batches.

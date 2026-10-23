@@ -7,7 +7,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib_common import load_json, save_json, fail, run_main
 
 
-def decide(audit, thr, processing_mode=None, evidence=None):
+# ---- single FAST workflow: evidence-driven decision -------------------------
+# There is no selectable processing mode. Verification scope is decided by
+# evidence: the routine single-pass FAST workflow (prompt contract + one blind
+# review stream) never claims COMPREHENSIVE completeness; a run can only be
+# certified COMPREHENSIVE when recorded evidence shows an exhaustive
+# second-pass sweep and completed independent reviews (legacy full audits).
+
+def decide(audit, thr, policy=None, evidence=None, processing_mode=None):
+    # `processing_mode` is accepted for call compatibility and ignored: the
+    # pipeline has exactly one workflow and no mode-dependent verdicts.
     reasons = []
     limited = False
     rec = audit.get("anchor_recall", 0)
@@ -52,7 +61,7 @@ def decide(audit, thr, processing_mode=None, evidence=None):
     new_engine = bool(audit.get("has_explicit_purposes"))
     # Only enforce cognitive blocking when the new engine was actually used
     # (explicit purpose metadata present). Legacy banks without purpose tags are
-    # grandfathered so existing COMPREHENSIVE packages keep passing.
+    # grandfathered so existing packages keep passing.
     if new_engine and isinstance(cog, dict) and cog and isinstance(gaps, dict) and purpose_cov:
         if gaps:
             # critical: any Tier-1 KU missing required forms blocks COMPREHENSIVE
@@ -75,44 +84,35 @@ def decide(audit, thr, processing_mode=None, evidence=None):
             reasons.append("%d question(s) rejected by quality evaluation" % qstats["quality_rejected"])
 
     has_substantive_flaws = bool(reasons)
-    pm = str(processing_mode or audit.get("processing_mode") or "").upper()
 
     # Check verification evidence
     ev = evidence
     if ev is None:
         ev = audit.get("verification_evidence")
 
-    # Processing mode verification: QUICK and BALANCED skip exhaustive second-pass sweep
-    # and cannot receive COMPREHENSIVE status.
-    if pm in ("QUICK", "BALANCED"):
-        reasons.append("verification scope reduced: processing mode '%s' skipped exhaustive second-pass sweep" % pm)
+    def verdict():
+        # genuine failures/coverage gaps must remain PARTIAL, never overwritten
+        if limited:
+            return "LIMITED"
         if has_substantive_flaws:
-            # Genuine failures/coverage gaps must remain PARTIAL/LIMITED, never overwritten
-            if limited:
-                return "LIMITED", reasons
-            return "PARTIAL", reasons
-        return "LIMITED", reasons
+            return "PARTIAL"
+        return "LIMITED"
 
-    # In COMPREHENSIVE mode, evidence of full-source second pass and reviews is required
-    if ev is not None:
-        if not isinstance(ev, dict) or not ev.get("second_pass_sweep"):
-            reasons.append("verification evidence incomplete: missing exhaustive second-pass sweep")
-            if has_substantive_flaws:
-                return ("LIMITED" if limited else "PARTIAL"), reasons
-            return "LIMITED", reasons
-        if ev.get("missing_reviews"):
-            reasons.append("verification evidence incomplete: mandatory review stream missing")
-            if has_substantive_flaws:
-                return ("LIMITED" if limited else "PARTIAL"), reasons
-            return "LIMITED", reasons
-
+    if not isinstance(ev, dict):
+        reasons.append("verification evidence missing: completeness and scope cannot be certified")
+        return verdict(), reasons
+    if not ev.get("exhaustive_second_pass"):
+        reasons.append("verification scope reduced: single-pass FAST workflow skipped the "
+                       "exhaustive second-pass sweep")
+        return verdict(), reasons
+    # Exhaustive-sweep evidence present (legacy full-audited runs): every
+    # independent review stream must have completed.
+    if ev.get("missing_reviews"):
+        reasons.append("verification evidence incomplete: mandatory review stream missing")
+        return verdict(), reasons
     if not reasons:
         return "COMPREHENSIVE", reasons
-    # LIMITED iff an extraction limitation makes completeness uncertifiable (E5);
-    # otherwise an honest PARTIAL.
-    if limited:
-        return "LIMITED", reasons
-    return "PARTIAL", reasons
+    return ("LIMITED" if limited else "PARTIAL"), reasons
 
 
 def main(argv):
@@ -121,7 +121,6 @@ def main(argv):
     ap.add_argument("--out", default=None)
     ap.add_argument("--config", default=None)
     ap.add_argument("--threshold", type=float, default=None)
-    ap.add_argument("--processing-mode", choices=["QUICK", "BALANCED", "COMPREHENSIVE"], default=None)
     ap.add_argument("--evidence", default=None, help="Path to verification_evidence.json")
     a = ap.parse_args(argv)
     if not os.path.isfile(a.audit):
@@ -147,8 +146,7 @@ def main(argv):
             thr = 1.0
     if thr is None:
         thr = 1.0
-    proc_mode = a.processing_mode or cfg_obj.get("processing_mode") or audit.get("processing_mode")
-    
+
     # Resolve verification evidence if available
     evidence_data = None
     ev_path = a.evidence
@@ -162,12 +160,12 @@ def main(argv):
         except Exception:
             evidence_data = None
 
-    status, reasons = decide(audit, thr, processing_mode=proc_mode, evidence=evidence_data)
+    status, reasons = decide(audit, thr, evidence=evidence_data)
     gate = {
         "status": status,
         "reasons": reasons,
-        "processing_mode": proc_mode or "COMPREHENSIVE",
-        "evidence_verified": bool(evidence_data and evidence_data.get("second_pass_sweep"))
+        "verification_policy": "single_pass_blind_review" if not (evidence_data and evidence_data.get("exhaustive_second_pass")) else "exhaustive_audit",
+        "evidence_verified": bool(evidence_data and evidence_data.get("exhaustive_second_pass") and not evidence_data.get("missing_reviews"))
     }
     dest = a.out or os.path.join(os.path.dirname(os.path.abspath(a.audit)), "gate.json")
     if not dest.endswith(".json"):

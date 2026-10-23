@@ -74,7 +74,10 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Dynamic adaptive run (quality gates unchanged).")
     ap.add_argument("--source", required=True)
     ap.add_argument("--run-id", required=True)
-    ap.add_argument("--profile", required=True)
+    ap.add_argument("--profile", default=None,
+                    help="Optional exam profile (style input only; the single FAST "
+                         "workflow runs generalized competitive-exam authoring "
+                         "without one)")
     ap.add_argument("--config", required=True)
     ap.add_argument("--build-dir", default="build")
     ap.add_argument("--inventory", default=None)
@@ -86,10 +89,12 @@ def main(argv=None) -> int:
     if not os.path.isfile(a.source):
         print("error: source not found: %s" % a.source, file=sys.stderr)
         return 1
-    for p, n in ((a.profile, "profile"), (a.config, "config")):
-        if not os.path.isfile(p):
-            print("error: %s not found: %s" % (n, p), file=sys.stderr)
-            return 1
+    if a.profile and not os.path.isfile(a.profile):
+        print("error: profile not found: %s" % a.profile, file=sys.stderr)
+        return 1
+    if not os.path.isfile(a.config):
+        print("error: config not found: %s" % a.config, file=sys.stderr)
+        return 1
     cfg = load_json(a.config)
     batching = cfg.get("batching", {}) if isinstance(cfg, dict) else {}
     rdir = a.run_id if os.path.basename(os.path.normpath(a.build_dir)) == a.run_id else os.path.join(a.build_dir, a.run_id)
@@ -154,8 +159,10 @@ def main(argv=None) -> int:
     spec = iu.spec_from_file_location("pipeline", os.path.join(os.path.dirname(os.path.abspath(__file__)), "pipeline.py"))
     pm = iu.module_from_spec(spec)
     spec.loader.exec_module(pm)
-    pargs = ["--source", a.source, "--run-id", a.run_id, "--profile", a.profile,
+    pargs = ["--source", a.source, "--run-id", a.run_id,
              "--config", a.config, "--build-dir", a.build_dir]
+    if a.profile:
+        pargs += ["--profile", a.profile]
     if a.inventory:
         pargs += ["--inventory", a.inventory]
     if a.bank:

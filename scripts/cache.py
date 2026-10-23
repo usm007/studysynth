@@ -173,7 +173,9 @@ def merge_batches(batch_results):
 
 
 REDACT_TOP = ("answer", "answer_key", "validation", "validation_status",
-              "quality_grade", "quality_status", "review", "rejection_labels")
+              "quality_grade", "quality_status", "review", "rejection_labels",
+              "confidence", "attempt_count", "correct_count",
+              "last_attempted", "last_result", "priority")
 REDACT_STMT = ("truth_value", "truth", "is_true", "correct")
 REDACT_OPT = ("is_correct", "covers")
 

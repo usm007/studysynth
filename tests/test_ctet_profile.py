@@ -158,8 +158,8 @@ class TestPromptContext(unittest.TestCase):
     def setUp(self):
         self.profile = load_json(CTET_PATH)
 
-    def test_exam_design_prompt_receives_ctet_style_rules(self):
-        text = profile_style.build_prompt(CTET_PATH, "exam-design")
+    def test_extract_prompt_receives_ctet_style_rules(self):
+        text = profile_style.build_prompt(CTET_PATH, "extract")
         self.assertIn("CTET question-style profile", text)
         self.assertIn("classroom_situation", text)
         self.assertIn("subject_pedagogy", text)
